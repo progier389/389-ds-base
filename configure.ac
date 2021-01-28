@@ -493,8 +493,28 @@ configdir=/$PACKAGE_NAME/config
 schemadir=/$PACKAGE_NAME/schema
 
 # default user, group
-defaultuser=dirsrv
-defaultgroup=dirsrv
+AC_MSG_CHECKING(for --with-username)
+AC_ARG_WITH([username],
+   AS_HELP_STRING([--with-username=USERNAME],
+                  [Name of the user running the instances])
+)
+if test -n "$with_username"; then
+  AC_MSG_RESULT([$with_username])
+  defaultuser=$with_username
+else
+  defaultuser=dirsrv
+fi
+AC_MSG_CHECKING(for --with-groupname)
+AC_ARG_WITH([groupname],
+   AS_HELP_STRING([--with-groupname=GROUPNAME],
+                  [Group of the user running the instances])
+)
+if test -n "$with_groupname"; then
+  AC_MSG_RESULT([$with_groupname])
+  defaultgroup=$with_groupname
+else
+  defaultgroup=dirsrv
+fi
 
 AC_MSG_CHECKING(for --with-perldir)
 AC_ARG_WITH([perldir],

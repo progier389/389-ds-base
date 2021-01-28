@@ -68,7 +68,8 @@ from lib389.utils import (
     ensure_list_str,
     format_cmd_list,
     selinux_present,
-    selinux_label_port)
+    selinux_label_port,
+    get_user_is_root)
 from lib389.paths import Paths
 from lib389.nss_ssl import NssSsl
 from lib389.tasks import BackupTask, RestoreTask
@@ -788,6 +789,9 @@ class DirSrv(SimpleLDAPObject, object):
 
         slapd_options.verify()
         slapd = slapd_options.collect()
+
+        if not slapd['user'] == 'root':
+            general['selinux'] = False
 
         # In order to work by "default" for tests, we need to create a backend.
         backends = []
@@ -1539,7 +1543,7 @@ class DirSrv(SimpleLDAPObject, object):
         self.config.set('nsslapd-security', 'on')
         self.use_ldaps_uri()
 
-        if selinux_present():
+        if selinux_present() and get_user_is_root():
             selinux_label_port(self.sslport)
 
         # If we are old, we don't have template dse, so enable manually.

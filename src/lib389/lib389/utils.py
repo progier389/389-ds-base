@@ -192,6 +192,14 @@ def selinux_present():
     """
     status = False
 
+    if not shutil.which("semanage"):
+        log.error('semanage command not found, will not relabel ports.' )
+        return status
+    if not get_user_is_root():
+        log.error('not root user, will not relabel ports.' )
+        return status
+
+
     try:
         import selinux
         if selinux.is_selinux_enabled():
@@ -274,6 +282,10 @@ def selinux_label_port(port, remove_label=False):
     if not selinux.is_selinux_enabled():
         log.debug('selinux is disabled, skipping port relabel')
         return
+
+    if not get_user_is_root():
+        log.error('not root user, will not relabel ports.' )
+        return status
 
     # We only label ports that ARE NOT in the default policy that comes with
     # a RH based system.
