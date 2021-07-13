@@ -620,14 +620,6 @@ main(int argc, char **argv)
     g_log_init();
     vattr_init();
 
-    {
-		static char b[10240] = "";
-		int i;
-		for (i=0;i<argc;i++)
-                sprintf(b+strlen(b), "'%s' ", argv[i]);
-		slapi_log_err(SLAPI_LOG_INFO, "main", "#### RUNNING: %s\n", b);
-	}
-
 
     /*
      * init the thread data indexes. Nothing should be creating their
@@ -822,6 +814,14 @@ main(int argc, char **argv)
         return_value = 1;
         goto cleanup;
     }
+
+    {
+		static char b[10240] = "";
+		int i;
+		for (i=0;i<argc;i++)
+                sprintf(b+strlen(b), "'%s' ", argv[i]);
+		slapi_log_err(SLAPI_LOG_INFO, "main", "#### RUNNING: %s\n", b);
+	}
 
     /*
      * if we were called upon to do special database stuff, do it and be
