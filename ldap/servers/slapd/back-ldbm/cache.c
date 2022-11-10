@@ -44,6 +44,7 @@
         if (!(_x)) {                                                                    \
             slapi_log_err(SLAPI_LOG_ERR, "cache", "BAD CACHE ASSERTION at %s/%d: %s\n", \
                           __FILE__, __LINE__, #_x);                                     \
+            slapi_log_backtrace(SLAPI_LOG_ERR);                                         \
             *(char *)0L = 23;                                                           \
         }                                                                               \
     } while (0)
@@ -60,6 +61,8 @@ typedef enum {
     ENTRY_CACHE,
     DN_CACHE,
 } CacheType;
+
+#include "dbgec.c"
 
 #define LRU_DETACH(cache, e) lru_detach((cache), (void *)(e))
 #define CACHE_LRU_HEAD(cache, type) ((type)((cache)->c_lruhead))
@@ -208,6 +211,7 @@ add_hash(Hashtable *ht, void *key, uint32_t keylen, void *entry, void **alt)
     /* ok, it's not already there, so add it */
     back_entry->ep_create_time = slapi_current_rel_time_hr();
     HASH_NEXT(ht, entry) = ht->slot[slot];
+    dbgec_add_entry(entry);
     ht->slot[slot] = entry;
     return 1;
 }
@@ -252,6 +256,7 @@ remove_hash(Hashtable *ht, const void *key, uint32_t keylen)
             else
                 ht->slot[slot] = HASH_NEXT(ht, e);
             HASH_NEXT(ht, e) = NULL;
+            dbgec_rem_entry(e);
             return 1;
         }
         laste = e;
@@ -495,6 +500,7 @@ cache_make_hashes(struct cache *cache, int type)
         cache->c_uuidtable = NULL;
 #endif
     }
+    dbgec_init();
 }
 
 /*
@@ -536,6 +542,7 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
 
     for (size_t i = 0; i < ht->size; i++) {
         e = ht->slot[i];
+        dbgec_test_if_entry_pointer_is_valid(e, NULL, i, __LINE__);
         while (e) {
             struct backcommon *entry = (struct backcommon *)e;
             uint64_t remove_it = 0;
@@ -547,6 +554,7 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
             }
             laste = e;
             e = HASH_NEXT(ht, e);
+            dbgec_test_if_entry_pointer_is_valid(e, laste, i, __LINE__);
 
             if (remove_it) {
                 /* since we have the cache lock we know we can trust refcnt */
@@ -577,6 +585,7 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
 
         for (size_t i = 0; i < ht->size; i++) {
             e = ht->slot[i];
+            dbgec_test_if_entry_pointer_is_valid(e, NULL, i, __LINE__);
             while (e) {
                 struct backcommon *entry = (struct backcommon *)e;
                 uint64_t remove_it = 0;
@@ -588,6 +597,7 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
                 }
                 laste = e;
                 e = HASH_NEXT(ht, e);
+                dbgec_test_if_entry_pointer_is_valid(e, laste, i, __LINE__);
 
                 if (remove_it) {
                     /* since we have the cache lock we know we can trust refcnt */
@@ -2165,7 +2175,7 @@ check_entry_cache(struct cache *cache, struct backentry *e)
     struct backentry *debug_e = cache_find_dn(cache,
                                               slapi_sdn_get_dn(sdn),
                                               slapi_sdn_get_ndn_len(sdn));
-    in_cache = cache_is_in_cache(cache, (void *)e);
+    int in_cache = cache_is_in_cache(cache, (void *)e);
     if (in_cache) {
         if (debug_e) { /* e is in cache */
             CACHE_RETURN(cache, &debug_e);
