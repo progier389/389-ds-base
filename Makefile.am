@@ -1082,6 +1082,7 @@ libslapd_la_SOURCES = ldap/servers/slapd/add.c \
 	ldap/servers/slapd/csn.c \
 	ldap/servers/slapd/csngen.c \
 	ldap/servers/slapd/csnset.c \
+	ldap/servers/slapd/dbgentrycache.c \
 	ldap/servers/slapd/defbackend.c \
 	ldap/servers/slapd/delete.c \
 	ldap/servers/slapd/dl.c \

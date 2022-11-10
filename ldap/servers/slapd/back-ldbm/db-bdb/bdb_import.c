@@ -2681,6 +2681,8 @@ bdb_back_ldif2db(Slapi_PBlock *pb)
         slapi_pblock_get(pb, SLAPI_LDIF2DB_NAMESPACEID, &namespaceid);
         job->uuid_namespace = slapi_ch_strdup(namespaceid);
     }
+slapi_log_err(SLAPI_LOG_ERR, "bdb_back_ldif2db", "DEBUG: job->uuid_gen_type=%d  job->uuid_namespace=%s\n", job->uuid_gen_type, job->uuid_namespace ? job->uuid_namespace : "<NULL>");
+
 
     job->flags = FLAG_USE_FILES;
     if (NULL == name_array) { /* no ldif file is given -> reindexing or

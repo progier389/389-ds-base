@@ -1044,6 +1044,7 @@ add_uniqueid(Slapi_Entry *e)
     rc = slapi_uniqueIDGenerateString(&uniqueid);
     if (rc == UID_SUCCESS) {
         slapi_entry_set_uniqueid(e, uniqueid);
+slapi_log_err(SLAPI_LOG_ERR, "add_uniqueid", "Uniqueid is: %s dn is: %s \n", uniqueid,  (char *)slapi_entry_get_dn_const(e));
     } else {
         slapi_log_err(SLAPI_LOG_ERR, "add_uniqueid", "Uniqueid generation failed for %s; error = %d\n",
                       slapi_entry_get_dn_const(e), rc);

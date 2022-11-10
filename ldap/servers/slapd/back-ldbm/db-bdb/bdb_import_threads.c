@@ -65,6 +65,7 @@ bdb_import_generate_uniqueid(ImportJob *job, Slapi_Entry *e)
             /* time based */
             rc = slapi_uniqueIDGenerateString(&newuniqueid);
         }
+slapi_log_err(SLAPI_LOG_ERR, "bdb_import_generate_uniqueid", "%s[%d]: Debug nsuniqueid: %s dn: %s\n", __FILE__, __LINE__, newuniqueid, slapi_entry_get_dn_const(e));
 
         if (rc == UID_SUCCESS) {
             slapi_entry_set_uniqueid(e, newuniqueid);
@@ -3149,6 +3150,7 @@ bdb_bulk_import_start(Slapi_PBlock *pb)
         slapi_pblock_get(pb, SLAPI_LDIF2DB_NAMESPACEID, &namespaceid);
         job->uuid_namespace = slapi_ch_strdup(namespaceid);
     }
+slapi_log_err(SLAPI_LOG_ERR, "bdb_back_ldif2db", "DEBUG: job->uuid_gen_type=%d  job->uuid_namespace=%s\n", job->uuid_gen_type, job->uuid_namespace ? job->uuid_namespace : "<NULL>");
 
     job->flags = 0; /* don't use files */
     job->flags |= FLAG_INDEX_ATTRS;

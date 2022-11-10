@@ -14,6 +14,8 @@
 /* cache.c - routines to maintain an in-core cache of entries */
 
 #include "back-ldbm.h"
+#include <sys/mman.h>
+#include <unistd.h>
 
 #ifdef DEBUG
 #define LDAP_CACHE_DEBUG
@@ -44,15 +46,14 @@
         if (!(_x)) {                                                                    \
             slapi_log_err(SLAPI_LOG_ERR, "cache", "BAD CACHE ASSERTION at %s/%d: %s\n", \
                           __FILE__, __LINE__, #_x);                                     \
+            slapi_log_backtrace(SLAPI_LOG_ERR);                                         \
             *(char *)0L = 23;                                                           \
         }                                                                               \
     } while (0)
 
 #define LOG(...) slapi_log_err(SLAPI_LOG_CACHE, (char *)__func__, __VA_ARGS__)
-//# define LOG(_a, _x1, _x2, _x3)  slapi_log_err(SLAPI_LOG_CACHE, _a, _x1, _x2, _x3)
 #else
 #define ASSERT(_x) ;
-//#define LOG(_a, _x1, _x2, _x3)  ;
 #define LOG(...)
 #endif
 
@@ -208,6 +209,10 @@ add_hash(Hashtable *ht, void *key, uint32_t keylen, void *entry, void **alt)
     /* ok, it's not already there, so add it */
     back_entry->ep_create_time = slapi_current_rel_time_hr();
     HASH_NEXT(ht, entry) = ht->slot[slot];
+    if (slot == 2078827 && !ht->slot[slot]) {
+        dbgec_start(entry);
+    }
+    dbgec_add_entry(entry);
     ht->slot[slot] = entry;
     return 1;
 }
@@ -252,6 +257,7 @@ remove_hash(Hashtable *ht, const void *key, uint32_t keylen)
             else
                 ht->slot[slot] = HASH_NEXT(ht, e);
             HASH_NEXT(ht, e) = NULL;
+            dbgec_rem_entry(e);
             return 1;
         }
         laste = e;
@@ -262,6 +268,22 @@ remove_hash(Hashtable *ht, const void *key, uint32_t keylen)
 }
 
 #ifdef LDAP_CACHE_DEBUG
+void check_pt(void *pt, int align)
+{
+    static size_t psize = 0;
+    char *page = (char*)pt;
+    uint64_t page_offset = (uint64_t)page;
+    if (!psize) {
+        psize = sysconf(_SC_PAGESIZE);
+    }
+    page_offset &=  psize-1;
+    page -= page_offset;
+    /* Check that pointer aligned */
+    ASSERT( (page_offset & (align-1)) == 0);
+    /* Check that pointer is mapped in memory */
+    ASSERT(msync(page, psize, MS_ASYNC) == 0);
+}
+
 void
 dump_hash(Hashtable *ht)
 {
@@ -495,6 +517,7 @@ cache_make_hashes(struct cache *cache, int type)
         cache->c_uuidtable = NULL;
 #endif
     }
+    dbgec_store_cache_info(cache, type);
 }
 
 /*
@@ -511,6 +534,18 @@ flush_remove_entry(struct timespec *entry_time, struct timespec *start_time)
         return 1;
     } else {
         return 0;
+    }
+}
+
+static inline void
+test_if_entry_pointer_is_valid(void *e, void *prev, int slot, int line)
+{
+    /* Check if the entry pointer is rightly aligned and crash loudly otherwise */
+    if ( ((uint64_t)e) & ((sizeof(long))-1) ) {
+        slapi_log_err(SLAPI_LOG_FATAL, "test_if_entry_pointer_is_valid", "cache.c[%d]: Wrong entry address: %p Previous entry address is: %p hash table slot is %d\n", line, e, prev, slot);
+        slapi_log_backtrace(SLAPI_LOG_FATAL);
+        *(char*)33 = 'a';
+        abort();
     }
 }
 
@@ -536,9 +571,11 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
 
     for (size_t i = 0; i < ht->size; i++) {
         e = ht->slot[i];
+        test_if_entry_pointer_is_valid(e, NULL, i, __LINE__);
         while (e) {
             struct backcommon *entry = (struct backcommon *)e;
             uint64_t remove_it = 0;
+
             if (flush_remove_entry(&entry->ep_create_time, start_time)) {
                 /* Mark the entry to be removed */
                 slapi_log_err(SLAPI_LOG_CACHE, "flush_hash", "[%s] Removing entry id (%d)\n",
@@ -547,6 +584,7 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
             }
             laste = e;
             e = HASH_NEXT(ht, e);
+            test_if_entry_pointer_is_valid(e, laste, i, __LINE__);
 
             if (remove_it) {
                 /* since we have the cache lock we know we can trust refcnt */
@@ -577,6 +615,7 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
 
         for (size_t i = 0; i < ht->size; i++) {
             e = ht->slot[i];
+            test_if_entry_pointer_is_valid(e, NULL, i, __LINE__);
             while (e) {
                 struct backcommon *entry = (struct backcommon *)e;
                 uint64_t remove_it = 0;
@@ -588,6 +627,7 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
                 }
                 laste = e;
                 e = HASH_NEXT(ht, e);
+                test_if_entry_pointer_is_valid(e, laste, i, __LINE__);
 
                 if (remove_it) {
                     /* since we have the cache lock we know we can trust refcnt */
@@ -753,6 +793,7 @@ cache_clear(struct cache *cache, int type)
 static void
 erase_cache(struct cache *cache, int type)
 {
+    dbgec_store_cache_info(0, CACHE_TYPE_ENTRY);
     if (CACHE_TYPE_ENTRY == type) {
         entrycache_clear_int(cache);
     } else if (CACHE_TYPE_DN == type) {
@@ -2165,7 +2206,7 @@ check_entry_cache(struct cache *cache, struct backentry *e)
     struct backentry *debug_e = cache_find_dn(cache,
                                               slapi_sdn_get_dn(sdn),
                                               slapi_sdn_get_ndn_len(sdn));
-    in_cache = cache_is_in_cache(cache, (void *)e);
+    int in_cache = cache_is_in_cache(cache, (void *)e);
     if (in_cache) {
         if (debug_e) { /* e is in cache */
             CACHE_RETURN(cache, &debug_e);

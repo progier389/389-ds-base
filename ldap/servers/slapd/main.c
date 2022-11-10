@@ -234,6 +234,9 @@ fix_ownership(void)
 static int
 main_setuid(char *username)
 {
+    if (dbgec_init()) {
+        return 0;
+    }
     if (username != NULL) {
         struct passwd *pw;
         /* Make sure everything in the log and config directory

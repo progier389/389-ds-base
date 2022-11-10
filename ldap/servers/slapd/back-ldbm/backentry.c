@@ -15,6 +15,7 @@
 
 #include "back-ldbm.h"
 
+
 void
 backentry_free(struct backentry **bep)
 {
@@ -23,6 +24,10 @@ backentry_free(struct backentry **bep)
         return;
     }
     ep = *bep;
+#if LOGIT
+slapi_log_err(SLAPI_LOG_ERR, "backentry_free", "backentry.c[%d]: Freeing backentry %p\n", __LINE__, ep); 
+slapi_log_backtrace(SLAPI_LOG_ERR);
+#endif
 
     PR_ASSERT(ep->ep_state & (ENTRY_STATE_DELETED | ENTRY_STATE_NOTINCACHE | ENTRY_STATE_INVALID));
     if (ep->ep_entry != NULL) {
@@ -111,6 +116,11 @@ backdn_free(struct backdn **bdn)
     if (NULL == bdn || NULL == *bdn) {
         return;
     }
+#if LOGIT
+slapi_log_err(SLAPI_LOG_ERR, "backdn_free", "backentry.c[%d]: Freeing backdn %p\n", __LINE__, *bdn); 
+slapi_log_backtrace(SLAPI_LOG_ERR);
+#endif
+    dbgec_stop(*bdn);
     slapi_sdn_free(&((*bdn)->dn_sdn));
     slapi_ch_free((void **)bdn);
     *bdn = NULL;

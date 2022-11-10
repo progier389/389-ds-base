@@ -1510,6 +1510,8 @@ int slapi_exists_or_add_internal(Slapi_DN *dn, const char *filter, const char *e
 
 void slapi_log_backtrace(int loglevel);
 
+#include "dbgentrycache.h"
+
 #ifdef __cplusplus
 }
 #endif

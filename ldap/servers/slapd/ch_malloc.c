@@ -262,6 +262,7 @@ slapi_ch_free(void **ptr)
         return;
     }
 
+    dbgec_check_absence(*ptr);
     free(*ptr);
     *ptr = NULL;
     return;

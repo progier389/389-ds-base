@@ -40,16 +40,29 @@
 #include <pk11func.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/param.h>
+
 
 #ifdef HAVE_SYS_SYSINFO_H
 #include <sys/sysinfo.h>
 #endif
+
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <errno.h>
+
 
 #include <sys/utsname.h>
 #include <unistd.h> /* gethostname() */
 #include "slap.h"
 #include "uuid.h"
 #include "sechash.h"
+
+/* When setting following flags to 1, the uuid is no more random but base on port and secure port values
+ * To be able to debug some issue and having reproducible nsuniqueid (as far as ldap requests get handled in the
+ * same order (Which is usually the case in CI Tests)
+ */
+#define FIXED_TIMESTAMP 0     /* For debuging purpose it may be usefull to fix the unique id (based on port and sport value) */
 
 #define SEQ_PER_SEC 10000000  /* number of 100ns intervals in a sec */
 #define STATE_FILE "state"    /* file that contains generator's state */
@@ -312,10 +325,138 @@ void uuid_create_from_name(guid_t *uuid,      /* resulting UUID */
 
 /* Helper Functions */
 
+#if FIXED_TIMESTAMP
+
+struct static_uuid_state {
+    int port;
+    int sport;
+    int seqnum;
+    int padding;
+};
+
+struct static_uuid_state *get_static_uuid_state()
+{
+    /* State is stored in a mmaped file so the seqnum stays accurate after a restart */
+    static struct static_uuid_state *state = NULL;
+    if (state) {
+        return state;
+	}
+    Slapi_PBlock *pb;
+    int rt;
+    Slapi_Entry **entries;
+    Slapi_Attr *attr;
+    Slapi_Value *value;
+    char path[MAXPATHLEN] = "";
+    int port = 0;
+    int sport = 0;
+    int fd;
+
+
+    pb = slapi_search_internal(SLAPD_CONFIG_DN, LDAP_SCOPE_BASE, "objectclass=*", NULL, NULL, 0);
+    slapi_pblock_get(pb, SLAPI_PLUGIN_INTOP_RESULT, &rt);
+    if (rt != LDAP_SUCCESS) {
+        slapi_log_err(SLAPI_LOG_ERR, MODULE, "get_static_uuid_state: "
+                                             "search operation failed; LDAP error - %d\n", rt);
+        abort();
+    }
+    slapi_pblock_get(pb, SLAPI_PLUGIN_INTOP_SEARCH_ENTRIES, &entries);
+    if (entries == NULL || entries[0] == NULL) {
+        slapi_log_err(SLAPI_LOG_ERR, MODULE, "get_static_uuid_state: "
+                                             "failed to get %s entry.\n", SLAPD_CONFIG_DN);
+        abort();
+    }
+    /* get port */
+    rt = slapi_entry_attr_find(entries[0], CONFIG_PORT_ATTRIBUTE, &attr);
+    if (rt == LDAP_SUCCESS) {
+        slapi_attr_first_value(attr, &value);
+        if (value != NULL) {
+            port = slapi_value_get_int(value);
+        }
+    }
+    /* get secure port */
+    rt = slapi_entry_attr_find(entries[0], CONFIG_SECUREPORT_ATTRIBUTE, &attr);
+    if (rt == LDAP_SUCCESS) {
+        slapi_attr_first_value(attr, &value);
+        if (value != NULL) {
+            sport = slapi_value_get_int(value);
+        }
+    }
+    /* get mmaped file path */
+    rt = slapi_entry_attr_find(entries[0], CONFIG_CERTDIR_ATTRIBUTE, &attr);
+    if (rt == LDAP_SUCCESS) {
+        slapi_attr_first_value(attr, &value);
+        if (value != NULL) {
+            size_t len = slapi_value_get_length(value);
+            if (len + 20 > sizeof path) {
+                slapi_log_err(SLAPI_LOG_ERR, MODULE, "get_static_uuid_state: "
+                                                     "config dir path is too long (len=%ld/%ld)\n", len, (sizeof path) - 20);
+            }
+            memcpy(path, slapi_value_get_string(value), len);
+            strcpy(path+len, "/uuidstate.data");
+        }
+    }
+    if (pb) {
+        slapi_free_search_results_internal(pb);
+        slapi_pblock_destroy(pb);
+    }
+    if (!path[0]) {
+        slapi_log_err(SLAPI_LOG_ERR, MODULE, "get_static_uuid_state: "
+                                             "failed to get config directory from %s attribute.\n",
+                                             CONFIG_CERTDIR_ATTRIBUTE);
+        abort();
+    }
+    fd = open(path, O_RDWR);
+    if (fd < 0) {
+        fd = open(path, O_RDWR | O_CREAT, 0600);
+        if (fd < 0) {
+            slapi_log_err(SLAPI_LOG_ERR, MODULE, "get_timestamp: "
+                                             "failed to create fixed uuid state file %s errno=%d %s.\n",
+                                             path, errno, strerror(errno));
+            abort();
+        }
+        struct static_uuid_state tmp = {0};
+        tmp.port = port;
+        tmp.sport = sport;
+        if (write(fd, &tmp, sizeof tmp) != sizeof tmp) {
+            slapi_log_err(SLAPI_LOG_ERR, MODULE, "get_timestamp: "
+                                             "failed to initialize fixed uuid state file %s errno=%d %s.\n",
+                                             path, errno, strerror(errno));
+            abort();
+        }
+    }
+    state = mmap(NULL, (sizeof (struct static_uuid_state)), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+    if (state == MAP_FAILED) {
+        slapi_log_err(SLAPI_LOG_ERR, MODULE, "get_timestamp: "
+                                             "failed to mmap fixed uuid state file %s errno=%d %s.\n",
+                                             path, errno, strerror(errno));
+        abort();
+    }
+    return state;
+}
+
+static void
+format_fixed_uuid(guid_t *uuid)
+{
+    struct static_uuid_state *state = get_static_uuid_state();
+
+    uuid->time_low = ++state->seqnum;
+    uuid->time_mid = (unsigned16)state->port;
+    uuid->time_hi_and_version = (state->sport & 0xffff) | (1 << 12);
+    uuid->clock_seq_low = 0;
+    uuid->clock_seq_hi_and_reserved = 0x80;
+    memcpy(&uuid->node, &_state.genstate.node, sizeof(uuid->node));
+} 
+
+#endif
+
+
 /* uuid_create_st -- singlethreaded generation */
 static int
 uuid_create_st(guid_t *uuid)
 {
+#if FIXED_TIMESTAMP
+    format_fixed_uuid(uuid);
+#else
     uuid_time_t timestamp;
 
     /* generate new time and save it in the state */
@@ -323,6 +464,7 @@ uuid_create_st(guid_t *uuid)
 
     /* stuff fields into the UUID */
     format_uuid_v1(uuid, timestamp, _state.genstate.clockseq);
+#endif
 
     return UUID_SUCCESS;
 }
@@ -331,6 +473,11 @@ uuid_create_st(guid_t *uuid)
 static int
 uuid_create_mt(guid_t *uuid)
 {
+#if FIXED_TIMESTAMP
+    PR_Lock(_state.lock);
+    format_fixed_uuid(uuid);
+    PR_Unlock(_state.lock);
+#else
     uuid_time_t timestamp = 0;
     unsigned16 clock_seq = 0;
 
@@ -342,8 +489,10 @@ uuid_create_mt(guid_t *uuid)
         return UUID_TIME_ERROR;
     }
 
+
     /* stuff fields into UUID */
     format_uuid_v1(uuid, timestamp, clock_seq);
+#endif
 
     return UUID_SUCCESS;
 }
