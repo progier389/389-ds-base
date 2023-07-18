@@ -2,23 +2,39 @@ import React from 'react';
 import {
     Alert,
     Card,
+    CardHeader,
     CardBody,
+    CardFooter,
     CardTitle,
     ClipboardCopy,
     ClipboardCopyVariant,
+    Pagination,
+    Popover,
+    SimpleList,
+    SimpleListItem,
     Spinner,
     Switch,
+    Text,
+    TextArea,
+    TextContent,
+    TextVariants,
     Wizard
 } from '@patternfly/react-core';
 import {
-    headerCol,
+  Table, TableHeader, TableBody, TableVariant, headerCol,
+  getErrorTextByValidator,
+  cancelCellEdits,
+  validateCellEdits,
+  applyCellEdits,
+  EditableTextCell,
+  EditableSelectInputCell
 } from '@patternfly/react-table';
 import {
     UserIcon,
     UsersIcon,
 } from '@patternfly/react-icons';
 import {
-    getBaseLevelEntryFullAttributes, deleteLdapData
+  getBaseLevelEntryFullAttributes, deleteLdapData
 } from '../lib/utils.jsx';
 
 class DeleteOperationWizard extends React.Component {
@@ -62,7 +78,7 @@ class DeleteOperationWizard extends React.Component {
             deleting: true,
         };
 
-        this.handleNext = ({ id }) => {
+        this.onNext = ({ id }) => {
             this.setState({
                 stepIdReached: this.state.stepIdReached < id ? id : this.state.stepIdReached
             });
@@ -80,12 +96,12 @@ class DeleteOperationWizard extends React.Component {
                                    }, () => {
                                        this.props.onReload(); // Refreshes tableView
                                    });
-                                   const opInfo = { // This is what refreshes treeView
+                                   const opInfo = {  // This is what refreshes treeView
                                        operationType: 'DELETE',
                                        resultCode: result.errorCode,
                                        time: Date.now()
-                                   };
-                                   this.props.setWizardOperationInfo(opInfo);
+                                   }
+                                   this.props.setWizardOperationInfo(opInfo)
                                }
                 );
             }
@@ -99,19 +115,19 @@ class DeleteOperationWizard extends React.Component {
 
     componentDidMount () {
         getBaseLevelEntryFullAttributes(this.props.editorLdapServer, this.props.wizardEntryDn,
-                                        (result) => {
-                                            if (result !== '') {
-                                                const regex = /^numSubordinates:\s\d+?$/mi;
-                                                const line = result.match(regex);
-                                                const numSubordinates = line
-                                                    ? parseInt(line[0].split(':')[1].trim())
-                                                    : 0;
-                                                this.setState({
-                                                    entryLdifData: result,
-                                                    numSubordinates
-                                                });
-                                            }
-                                        }
+            (result) => {
+                if (result !== '') {
+                    const regex = /^numSubordinates:\s\d+?$/mi;
+                    const line = result.match(regex);
+                    const numSubordinates = line
+                        ? parseInt(line[0].split(':')[1].trim())
+                        : 0;
+                        this.setState({
+                            entryLdifData: result,
+                            numSubordinates
+                        });
+                }
+            }
         );
 
         const ldapsearchCmd = 'ldapsearch -LLL -o ldif-wrap=no -Y EXTERNAL ' +
@@ -127,7 +143,9 @@ class DeleteOperationWizard extends React.Component {
 
     render () {
         const {
-            commandOutput, entryLdifData, numSubordinates,
+            commandOutput,
+            entryLdifData, ldifArray, columnsValue, rowsValues,
+            noEmptyValue, alertVariant, rdnValue, numSubordinates,
             resultVariant, isAckChecked, ldapsearchCmd
         } = this.state;
 
@@ -136,7 +154,7 @@ class DeleteOperationWizard extends React.Component {
             : '';
         const entryIcon = numSubordinates > 0
             ? <UsersIcon />
-            : <UserIcon />;
+            : <UserIcon />
         const acknowledgementStep = (
             <div>
                 <Card isSelectable>
@@ -157,7 +175,7 @@ class DeleteOperationWizard extends React.Component {
         const ldifLines = entryLdifData.split('\n').map(line => {
             nb++;
             return { data: line, id: nb };
-        });
+        })
         const ldifDataStep = (
             <div>
                 <Alert
@@ -167,7 +185,7 @@ class DeleteOperationWizard extends React.Component {
                 />
                 <Card isSelectable>
                     { numSubordinates > 0 &&
-                        <>
+                        <React.Fragment>
                             <CardBody>
                                 Run this command to retrieve the LDAP entries that will be deleted
                             </CardBody>
@@ -181,20 +199,22 @@ class DeleteOperationWizard extends React.Component {
                                     {ldapsearchCmd}
                                 </ClipboardCopy>
                             </CardBody>
-                        </>}
+                        </React.Fragment>
+                    }
                     { numSubordinates === 0 &&
                         <CardBody className="ds-textarea">
                             {ldifLines.map((line) => (
                                 <h6 key={line.id}>{line.data}</h6>
                             ))}
-                        </CardBody>}
+                        </CardBody>
+                    }
                 </Card>
             </div>
         );
 
         const nbToDelete = numSubordinates > 0
             ? `This entry, as well as all its child entries,`
-            : 'This entry';
+            : 'This entry'
         const deletionStep = (
             <div>
                 <Alert
@@ -235,7 +255,7 @@ class DeleteOperationWizard extends React.Component {
                 : 'The entry was';
             reviewInfo += ' successfully deleted.';
         } else {
-            reviewInfo = 'There was an error during the deletion.';
+            reviewInfo = 'There was an error during the deletion.'
         }
         const delReviewStep = (
             <div className="ds-margin-bottom-md">
@@ -248,7 +268,8 @@ class DeleteOperationWizard extends React.Component {
                 {this.state.deleting &&
                     <div className="ds-center ds-margin-top-xlg">
                         <Spinner size="xlg" />
-                    </div>}
+                    </div>
+                }
             </div>
         );
 
@@ -289,8 +310,8 @@ class DeleteOperationWizard extends React.Component {
         return (
             <Wizard
                 isOpen={this.props.isWizardOpen}
-                onClose={this.props.handleToggleWizard}
-                onNext={this.handleNext}
+                onClose={this.props.toggleOpenWizard}
+                onNext={this.onNext}
                 title={numSubordinates === 0 ? 'Delete LDAP Entry' : 'Delete LDAP Entries'}
                 steps={deleteEntrySteps}
             />

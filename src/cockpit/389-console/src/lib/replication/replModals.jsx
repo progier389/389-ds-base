@@ -28,7 +28,7 @@ import {
     ValidatedOptions,
 } from "@patternfly/react-core";
 import PropTypes from "prop-types";
-import { ExclamationTriangleIcon } from '@patternfly/react-icons/dist/js/icons/exclamation-triangle-icon';
+import ExclamationTriangleIcon from '@patternfly/react-icons/dist/js/icons/exclamation-triangle-icon';
 
 export class WinsyncAgmtModal extends React.Component {
     constructor(props) {
@@ -156,7 +156,7 @@ export class WinsyncAgmtModal extends React.Component {
             title = "Edit";
             name = "agmt-modal-edit";
         } else {
-            initRow = (
+            initRow =
                 <Grid className="ds-margin-top">
                     <GridItem className="ds-label" span={3}>
                         Consumer Initialization
@@ -174,11 +174,10 @@ export class WinsyncAgmtModal extends React.Component {
                             <FormSelectOption key={1} value="online-init" label="Do Online Initialization" />
                         </FormSelect>
                     </GridItem>
-                </Grid>
-            );
+                </Grid>;
         }
 
-        let scheduleRow = (
+        let scheduleRow =
             <div className="ds-left-indent-md">
                 <Grid className="ds-margin-top-lg">
                     <GridItem className="ds-label" span={12}>
@@ -319,8 +318,7 @@ export class WinsyncAgmtModal extends React.Component {
                         </FormHelperText>
                     </GridItem>
                 </Grid>
-            </div>
-        );
+            </div>;
 
         if (!agmtSync) {
             scheduleRow = "";
@@ -428,7 +426,7 @@ export class WinsyncAgmtModal extends React.Component {
                                             }}
                                             validated={error.agmtBindDN ? ValidatedOptions.error : ValidatedOptions.default}
                                         />
-                                        <FormHelperText isError isHidden={!error.agmtBindDN || agmtBindDN === ""}>
+                                        <FormHelperText isError isHidden={!error.agmtBindDN || agmtBindDN == ""}>
                                             Value must be a valid DN
                                         </FormHelperText>
                                     </GridItem>
@@ -449,7 +447,7 @@ export class WinsyncAgmtModal extends React.Component {
                                             }}
                                             validated={error.agmtBindPW ? ValidatedOptions.error : ValidatedOptions.default}
                                         />
-                                        <FormHelperText isError isHidden={!error.agmtBindPW || agmtBindPW === "" || agmtBindPWConfirm === ""}>
+                                        <FormHelperText isError isHidden={!error.agmtBindPW || agmtBindPW == "" || agmtBindPWConfirm == ""}>
                                             Passwords must match
                                         </FormHelperText>
                                     </GridItem>
@@ -470,7 +468,7 @@ export class WinsyncAgmtModal extends React.Component {
                                             }}
                                             validated={error.agmtBindPWConfirm ? ValidatedOptions.error : ValidatedOptions.default}
                                         />
-                                        <FormHelperText isError isHidden={!error.agmtBindPWConfirm || agmtBindPWConfirm === ""}>
+                                        <FormHelperText isError isHidden={!error.agmtBindPWConfirm || agmtBindPWConfirm == ""}>
                                             Passwords must match
                                         </FormHelperText>
                                     </GridItem>
@@ -513,7 +511,7 @@ export class WinsyncAgmtModal extends React.Component {
                                             placeholder="e.g. cn=Users,dc=domain,dc=com"
                                             validated={error.agmtWinSubtree ? ValidatedOptions.error : ValidatedOptions.default}
                                         />
-                                        <FormHelperText isError isHidden={!error.agmtWinSubtree || agmtWinSubtree === ""}>
+                                        <FormHelperText isError isHidden={!error.agmtWinSubtree || agmtWinSubtree == ""}>
                                             Value must be a valid DN
                                         </FormHelperText>
                                     </GridItem>
@@ -535,7 +533,7 @@ export class WinsyncAgmtModal extends React.Component {
                                             placeholder="e.g. ou=People,dc=domain,dc=com"
                                             validated={error.agmtDSSubtree ? ValidatedOptions.error : ValidatedOptions.default}
                                         />
-                                        <FormHelperText isError isHidden={!error.agmtDSSubtree || agmtDSSubtree === ""}>
+                                        <FormHelperText isError isHidden={!error.agmtDSSubtree || agmtDSSubtree == ""}>
                                             Value must be a valid DN
                                         </FormHelperText>
                                     </GridItem>
@@ -827,7 +825,7 @@ export class ReplAgmtModal extends React.Component {
             title = "Edit";
             name = "agmt-modal-edit";
         } else {
-            initRow = (
+            initRow =
                 <Grid className="ds-margin-top-lg">
                     <GridItem className="ds-label" span={3}>
                         Consumer Initialization
@@ -845,11 +843,10 @@ export class ReplAgmtModal extends React.Component {
                             <FormSelectOption key={1} value="online-init" label="Do Online Initialization" />
                         </FormSelect>
                     </GridItem>
-                </Grid>
-            );
+                </Grid>;
         }
 
-        let bootstrapRow = (
+        let bootstrapRow =
             <div className="ds-left-indent-md">
                 <Grid className="ds-margin-top-lg" title="The Bind DN the agreement can use to bootstrap initialization">
                     <GridItem className="ds-label" span={3}>
@@ -867,7 +864,7 @@ export class ReplAgmtModal extends React.Component {
                             }}
                             validated={error.agmtBootstrapBindDN ? ValidatedOptions.error : ValidatedOptions.default}
                         />
-                        <FormHelperText isError isHidden={!error.agmtBootstrapBindDN || agmtBootstrapBindDN === ""}>
+                        <FormHelperText isError isHidden={!error.agmtBootstrapBindDN || agmtBootstrapBindDN == ""}>
                             Value must be a valid DN
                         </FormHelperText>
                     </GridItem>
@@ -888,7 +885,7 @@ export class ReplAgmtModal extends React.Component {
                             }}
                             validated={error.agmtBootstrapBindPW ? ValidatedOptions.error : ValidatedOptions.default}
                         />
-                        <FormHelperText isError isHidden={!error.agmtBootstrapBindPW || agmtBootstrapBindPW === "" || error.agmtBootstrapBindPWConfirm === ""}>
+                        <FormHelperText isError isHidden={!error.agmtBootstrapBindPW || agmtBootstrapBindPW == "" || error.agmtBootstrapBindPWConfirm == ""}>
                             Password must match
                         </FormHelperText>
                     </GridItem>
@@ -909,7 +906,7 @@ export class ReplAgmtModal extends React.Component {
                             }}
                             validated={error.agmtBootstrapBindPWConfirm ? ValidatedOptions.error : ValidatedOptions.default}
                         />
-                        <FormHelperText isError isHidden={!error.agmtBootstrapBindPWConfirm || agmtBootstrapBindPWConfirm === ""}>
+                        <FormHelperText isError isHidden={!error.agmtBootstrapBindPWConfirm || agmtBootstrapBindPWConfirm == ""}>
                             Passwords must match
                         </FormHelperText>
                     </GridItem>
@@ -954,10 +951,9 @@ export class ReplAgmtModal extends React.Component {
                         </FormSelect>
                     </GridItem>
                 </Grid>
-            </div>
-        );
+            </div>;
 
-        let scheduleRow = (
+        let scheduleRow =
             <div className="ds-left-indent-md">
                 <Grid className="ds-margin-top-lg">
                     <GridItem className="ds-label" span={12}>
@@ -1096,8 +1092,7 @@ export class ReplAgmtModal extends React.Component {
                         </FormHelperText>
                     </GridItem>
                 </Grid>
-            </div>
-        );
+            </div>;
 
         if (!agmtSync) {
             scheduleRow = "";
@@ -1153,7 +1148,7 @@ export class ReplAgmtModal extends React.Component {
                                             isDisabled={this.props.edit}
                                             validated={error.agmtName ? ValidatedOptions.error : ValidatedOptions.default}
                                         />
-                                        <FormHelperText isError isHidden={!error.agmtName || agmtName === ""}>
+                                        <FormHelperText isError isHidden={!error.agmtName || agmtName == ""}>
                                             Required field
                                         </FormHelperText>
                                     </GridItem>
@@ -1174,7 +1169,7 @@ export class ReplAgmtModal extends React.Component {
                                             }}
                                             validated={error.agmtHost ? ValidatedOptions.error : ValidatedOptions.default}
                                         />
-                                        <FormHelperText isError isHidden={!error.agmtHost || agmtHost === ""}>
+                                        <FormHelperText isError isHidden={!error.agmtHost || agmtHost == ""}>
                                             Required field
                                         </FormHelperText>
                                     </GridItem>
@@ -1237,7 +1232,7 @@ export class ReplAgmtModal extends React.Component {
                                             }}
                                             validated={error.agmtBindPW ? ValidatedOptions.error : ValidatedOptions.default}
                                         />
-                                        <FormHelperText isError isHidden={!error.agmtBindPW || error.agmtBindPW === "" || error.agmtBindPWConfirm === ""}>
+                                        <FormHelperText isError isHidden={!error.agmtBindPW || error.agmtBindPW == "" || error.agmtBindPWConfirm == ""}>
                                             Passwords must match
                                         </FormHelperText>
                                     </GridItem>
@@ -1258,7 +1253,7 @@ export class ReplAgmtModal extends React.Component {
                                             }}
                                             validated={error.agmtBindPWConfirm ? ValidatedOptions.error : ValidatedOptions.default}
                                         />
-                                        <FormHelperText isError isHidden={!error.agmtBindPWConfirm || agmtBindPWConfirm === ""}>
+                                        <FormHelperText isError isHidden={!error.agmtBindPWConfirm || agmtBindPWConfirm == ""}>
                                             Passwords must match
                                         </FormHelperText>
                                     </GridItem>
@@ -1465,23 +1460,23 @@ export class ChangeReplRoleModal extends React.Component {
         let saveDisabled = !checked;
 
         // Set the change type
-        if (role === "Supplier") {
+        if (role == "Supplier") {
             changeType = "Demoting";
             roleOptions = ["Hub", "Consumer"];
-        } else if (role === "Consumer") {
+        } else if (role == "Consumer") {
             changeType = "Promoting";
             roleOptions = ["Supplier", "Hub"];
         } else {
             // Hub
-            if (newRole === "Supplier") {
+            if (newRole == "Supplier") {
                 changeType = "Promoting";
             } else {
                 changeType = "Demoting";
             }
             roleOptions = ["Supplier", "Consumer"];
         }
-        if (newRole === "Supplier") {
-            ridRow = (
+        if (newRole == "Supplier") {
+            ridRow =
                 <Grid className="ds-margin-top-lg" title="Supplier Replica Identifier.  This must be unique across all the Supplier replicas in your environment">
                     <GridItem className="ds-label" span={3}>
                         Replica ID
@@ -1501,18 +1496,16 @@ export class ChangeReplRoleModal extends React.Component {
                             widthChars={8}
                         />
                     </GridItem>
-                </Grid>
-            );
+                </Grid>;
         }
 
         if (spinning) {
-            spinner = (
+            spinner =
                 <Grid>
                     <div className="ds-margin-top ds-modal-spinner">
                         <Spinner size="md" />{changeType} replica ...
                     </div>
-                </Grid>
-            );
+                </Grid>;
             saveDisabled = true;
         }
 
@@ -1721,8 +1714,8 @@ export class EnableReplModal extends React.Component {
             extraPrimaryProps.spinnerAriaValueText = "Saving";
         }
         let replicaIDRow = "";
-        if (enableRole === "Supplier") {
-            replicaIDRow = (
+        if (enableRole == "Supplier") {
+            replicaIDRow =
                 <Grid>
                     <GridItem span={3} className="ds-label">
                         Replica ID
@@ -1742,8 +1735,7 @@ export class EnableReplModal extends React.Component {
                             widthChars={6}
                         />
                     </GridItem>
-                </Grid>
-            );
+                </Grid>;
         }
 
         return (
@@ -1925,17 +1917,16 @@ export class ExportCLModal extends React.Component {
         }
 
         if (defaultCL) {
-            page = (
+            page =
                 <TextContent>
                     <Text component={TextVariants.h4}>
                         This will export the changelog to the server's LDIF directory.  This
                         is the only LDIF file that can be imported into the server for enabling
                         changelog encryption.  Do not edit or rename the file.
                     </Text>
-                </TextContent>
-            );
+                </TextContent>;
         } else {
-            page = (
+            page =
                 <div>
                     <Grid>
                         <GridItem span={12}>
@@ -1987,8 +1978,7 @@ export class ExportCLModal extends React.Component {
                             label="Only Export CSN's"
                         />
                     </Grid>
-                </div>
-            );
+                </div>;
         }
 
         return (

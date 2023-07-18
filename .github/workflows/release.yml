@@ -14,11 +14,6 @@ on:
         type: boolean
         default: false
 
-permissions:
-  actions: read
-  packages: read
-  contents: read
-
 jobs:
   build:
     runs-on: ubuntu-latest

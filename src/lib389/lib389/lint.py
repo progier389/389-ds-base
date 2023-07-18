@@ -1,5 +1,5 @@
 # --- BEGIN COPYRIGHT BLOCK ---
-# Copyright (C) 2023 Red Hat, Inc.
+# Copyright (C) 2022 Red Hat, Inc.
 # All rights reserved.
 #
 # License: GPL (version 3 or any later version).
@@ -97,62 +97,20 @@ verify, as this adds a cost of work to an attacker.
 In Directory Server, we offer one hash suitable for this (PBKDF2-SHA512) and one hash
 for "legacy" support (SSHA512).
 
-Your configured scheme (SCHEME) for 'CONFIG' is not secure
+Your configuration does not use these for password storage or the root password storage
+scheme.
 """,
     'fix': """Perform a configuration reset of the values:
 
-IE, stop Directory Server, and in dse.ldif delete this line (CONFIG). When Directory Server
+passwordStorageScheme
+nsslapd-rootpwstoragescheme
+
+IE, stop Directory Server, and in dse.ldif delete these two lines. When Directory Server
 is started, they will use the server provided defaults that are secure.
 
 You can also use 'dsconf' to replace these values.  Here is an example:
 
-    # dsconf slapd-YOUR_INSTANCE config replace CONFIG=PBKDF2-SHA512"""
-}
-
-DSCLE0003 = {
-    'dsle': 'DSCLE0003',
-    'severity': 'MEDIUM',
-    'description': 'Unauthorized Binds Allowed',
-    'items': ['cn=config', ],
-    'detail': """nsslapd-allow-unauthenticated-binds is set to 'on' this can
-lead to unexpected results with clients and potential security issues
-""",
-    'fix': """Set nsslapd-allow-unauthenticated-binds to off.
-You can use 'dsconf' to set this attribute.  Here is an example:
-
-    # dsconf slapd-YOUR_INSTANCE config replace nsslapd-allow-unauthenticated-binds=off"""
-}
-
-DSCLE0004 = {
-    'dsle': 'DSCLE0004',
-    'severity': 'LOW',
-    'description': 'Access Log buffering disabled',
-    'items': ['cn=config', ],
-    'detail': """nsslapd-accesslog-logbuffering is set to 'off' this will cause high
-disk IO and can significantly impact server performance.  This should only be used
-for debug purposes
-""",
-    'fix': """Set nsslapd-accesslog-logbuffering to 'on'.
-You can use 'dsconf' to set this attribute.  Here is an example:
-
-    # dsconf slapd-YOUR_INSTANCE config replace nsslapd-accesslog-logbuffering=on
-"""
-}
-
-DSCLE0005 = {
-    'dsle': 'DSCLE0005',
-    'severity': 'LOW',
-    'description': 'Security Log buffering disabled',
-    'items': ['cn=config', ],
-    'detail': """nsslapd-securitylog-logbuffering is set to 'off' this will cause high
-disk IO and it will impact server performance.  This should only be used
-for debug purposes
-""",
-    'fix': """Set nsslapd-securitylog-logbuffering to 'on'.
-You can use 'dsconf' to set this attribute.  Here is an example:
-
-    # dsconf slapd-YOUR_INSTANCE config replace nsslapd-securitylog-logbuffering=on
-"""
+    # dsconf slapd-YOUR_INSTANCE config replace passwordStorageScheme=PBKDF2-SHA512 nsslapd-rootpwstoragescheme=PBKDF2-SHA512"""
 }
 
 # Security checks
@@ -350,16 +308,6 @@ DSREPLLE0005 = {
     'detail': """The replication agreement (AGMT) under "SUFFIX" is not in synchronization,
 because the consumer server is not reachable.""",
     'fix': """Check if the consumer is running, and also check the errors log for more information."""
-}
-
-DSREPLLE0006 = {
-    'dsle': 'DSREPLLE0006',
-    'severity': 'MEDIUM',
-    'description': 'Replication has not been initilaized',
-    'items': ['Replication'],
-    'detail': """The replication for "SUFFIX" does not appear to be initialzied,
-because there is no RUV found for the suffix.""",
-    'fix': """Initialize this replica from a primary supplier replica"""
 }
 
 # Replication changelog

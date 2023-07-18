@@ -223,8 +223,7 @@ export class Schema extends React.Component {
         this.handleAliasNameCreateOption = newValue => {
             if (!this.state.atAliasOptions.includes(newValue)) {
                 this.setState({
-                    atAliasOptions: [...this.state.atAliasOptions, { value: newValue }],
-                    isAliasNameOpen: false
+                    atAliasOptions: [...this.state.atAliasOptions, { value: newValue }]
                 });
             }
         };
@@ -292,8 +291,7 @@ export class Schema extends React.Component {
         this.handleRequiredAttrsCreateOption = newValue => {
             if (!this.state.ocMustOptions.includes(newValue)) {
                 this.setState({
-                    ocMustOptions: [...this.state.ocMustOptions, { value: newValue }],
-                    isRequiredAttrsOpen: false
+                    ocMustOptions: [...this.state.ocParentocMustOptionsOptions, { value: newValue }]
                 });
             }
         };
@@ -331,8 +329,7 @@ export class Schema extends React.Component {
         this.handleAllowedAttrsCreateOption = newValue => {
             if (!this.state.ocMayOptions.includes(newValue)) {
                 this.setState({
-                    ocMayOptions: [...this.state.ocMayOptions, { value: newValue }],
-                    isAllowedAttrsOpen: false
+                    ocMayOptions: [...this.state.ocMayOptions, { value: newValue }]
                 });
             }
         };
@@ -1279,8 +1276,8 @@ export class Schema extends React.Component {
 
         this.setState({
             [attr]: value,
-            saveBtnDisabled,
-            errObj
+            saveBtnDisabled: saveBtnDisabled,
+            errObj: errObj
         });
     }
 
@@ -1331,8 +1328,8 @@ export class Schema extends React.Component {
 
         this.setState({
             [attr]: value,
-            saveBtnDisabled,
-            errObj
+            saveBtnDisabled: saveBtnDisabled,
+            errObj: errObj
         });
     }
 

@@ -47,19 +47,19 @@ class MemberOf extends React.Component {
         super(props);
 
         this.updateFields = this.updateFields.bind(this);
-        this.onChange = this.onChange.bind(this);
+        this.handleChange = this.handleChange.bind(this);
         this.handleFieldChange = this.handleFieldChange.bind(this);
         this.handleModalChange = this.handleModalChange.bind(this);
-        this.handleOpenModal = this.handleOpenModal.bind(this);
-        this.handleCloseModal = this.handleCloseModal.bind(this);
-        this.handleAddConfig = this.handleAddConfig.bind(this);
-        this.handleEditConfig = this.handleEditConfig.bind(this);
+        this.openModal = this.openModal.bind(this);
+        this.closeModal = this.closeModal.bind(this);
+        this.addConfig = this.addConfig.bind(this);
+        this.editConfig = this.editConfig.bind(this);
         this.deleteConfig = this.deleteConfig.bind(this);
         this.cmdOperation = this.cmdOperation.bind(this);
-        this.handleRunFixup = this.handleRunFixup.bind(this);
-        this.handleToggleFixupModal = this.handleToggleFixupModal.bind(this);
-        this.handleSaveConfig = this.handleSaveConfig.bind(this);
-        this.handleShowConfirmDelete = this.handleShowConfirmDelete.bind(this);
+        this.runFixup = this.runFixup.bind(this);
+        this.toggleFixupModal = this.toggleFixupModal.bind(this);
+        this.saveConfig = this.saveConfig.bind(this);
+        this.showConfirmDelete = this.showConfirmDelete.bind(this);
         this.closeConfirmDelete = this.closeConfirmDelete.bind(this);
         this.validateConfig = this.validateConfig.bind(this);
         this.validateModal = this.validateModal.bind(this);
@@ -114,9 +114,9 @@ class MemberOf extends React.Component {
         };
 
         // Config Attribute
-        this.handleConfigAttrSelect = (event, selection) => {
-            if (selection === this.state.configAttr) {
-                this.handleConfigAttrClear();
+        this.onConfigAttrSelect = (event, selection) => {
+            if (selection == this.state.configAttr) {
+                this.onConfigAttrClear();
             } else {
                 this.setState({
                     configAttr: selection,
@@ -124,12 +124,12 @@ class MemberOf extends React.Component {
                 }, () => { this.validateModal() });
             }
         };
-        this.handleConfigAttrToggle = isConfigAttrOpen => {
+        this.onConfigAttrToggle = isConfigAttrOpen => {
             this.setState({
                 isConfigAttrOpen
             });
         };
-        this.handleConfigAttrClear = () => {
+        this.onConfigAttrClear = () => {
             this.setState({
                 configAttr: "",
                 isConfigAttrOpen: false
@@ -137,7 +137,7 @@ class MemberOf extends React.Component {
         };
 
         // Config Group Attribute
-        this.handleConfigGroupAttrSelect = (event, selection) => {
+        this.onConfigGroupAttrSelect = (event, selection) => {
             if (this.state.configGroupAttr.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -154,12 +154,12 @@ class MemberOf extends React.Component {
                 );
             }
         };
-        this.handleConfigGroupAttrToggle = isConfigGroupAttrOpen => {
+        this.onConfigGroupAttrToggle = isConfigGroupAttrOpen => {
             this.setState({
                 isConfigGroupAttrOpen
             });
         };
-        this.handleConfigGroupAttrClear = () => {
+        this.onConfigGroupAttrClear = () => {
             this.setState({
                 configGroupAttr: [],
                 isConfigGroupAttrOpen: false
@@ -167,9 +167,9 @@ class MemberOf extends React.Component {
         };
 
         // MemberOf Attribute
-        this.handleMemberOfAttrSelect = (event, selection) => {
-            if (selection === this.state.configAttr) {
-                this.handleMemberOfAttrClear();
+        this.onMemberOfAttrSelect = (event, selection) => {
+            if (selection == this.state.configAttr) {
+                this.onMemberOfAttrClear();
             } else {
                 this.setState({
                     memberOfAttr: selection,
@@ -177,12 +177,12 @@ class MemberOf extends React.Component {
                 }, () => { this.validateModal() });
             }
         };
-        this.handleMemberOfAttrToggle = isMemberOfAttrOpen => {
+        this.onMemberOfAttrToggle = isMemberOfAttrOpen => {
             this.setState({
                 isMemberOfAttrOpen
             });
         };
-        this.handleMemberOfAttrClear = () => {
+        this.onMemberOfAttrClear = () => {
             this.setState({
                 memberOfAttr: [],
                 isMemberOfAttrOpen: false
@@ -190,7 +190,7 @@ class MemberOf extends React.Component {
         };
 
         // MemberOf Group Attribute
-        this.handleMemberOfGroupAttrSelect = (event, selection) => {
+        this.onMemberOfGroupAttrSelect = (event, selection) => {
             if (this.state.memberOfGroupAttr.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -207,12 +207,12 @@ class MemberOf extends React.Component {
                 );
             }
         };
-        this.handleMemberOfGroupAttrToggle = isMemberOfGroupAttrOpen => {
+        this.onMemberOfGroupAttrToggle = isMemberOfGroupAttrOpen => {
             this.setState({
                 isMemberOfGroupAttrOpen
             });
         };
-        this.handleMemberOfGroupAttrClear = () => {
+        this.onMemberOfGroupAttrClear = () => {
             this.setState({
                 memberOfGroupAttr: [],
                 isMemberOfGroupAttrOpen: false
@@ -220,7 +220,7 @@ class MemberOf extends React.Component {
         };
 
         // Handle scope subtree
-        this.handleSubtreeScopeSelect = (event, selection) => {
+        this.onSubtreeScopeSelect = (event, selection) => {
             if (this.state.memberOfEntryScope.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -237,18 +237,18 @@ class MemberOf extends React.Component {
                 );
             }
         };
-        this.handleSubtreeScopeToggle = isSubtreeScopeOpen => {
+        this.onSubtreeScopeToggle = isSubtreeScopeOpen => {
             this.setState({
                 isSubtreeScopeOpen
             }, () => { this.validateConfig() });
         };
-        this.handleSubtreeScopeClear = () => {
+        this.onSubtreeScopeClear = () => {
             this.setState({
                 memberOfEntryScope: [],
                 isSubtreeScopeOpen: false
             }, () => { this.validateConfig() });
         };
-        this.handleSubtreeScopeCreateOption = newValue => {
+        this.onSubtreeScopeCreateOption = newValue => {
             if (!this.state.memberOfEntryScopeOptions.includes(newValue)) {
                 this.setState({
                     memberOfEntryScopeOptions: [...this.state.memberOfEntryScopeOptions, newValue],
@@ -258,7 +258,7 @@ class MemberOf extends React.Component {
         };
 
         // Handle Exclude Scope subtree
-        this.handleExcludeScopeSelect = (event, selection) => {
+        this.onExcludeScopeSelect = (event, selection) => {
             if (this.state.memberOfEntryScopeExcludeSubtree.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -275,18 +275,18 @@ class MemberOf extends React.Component {
                 );
             }
         };
-        this.handleExcludeScopeToggle = isExcludeScopeOpen => {
+        this.onExcludeScopeToggle = isExcludeScopeOpen => {
             this.setState({
                 isExcludeScopeOpen
             }, () => { this.validateConfig() });
         };
-        this.handleExcludeScopeClear = () => {
+        this.onExcludeScopeClear = () => {
             this.setState({
                 memberOfEntryScopeExcludeSubtree: [],
                 isExcludeScopeOpen: false
             }, () => { this.validateConfig() });
         };
-        this.handleExcludeCreateOption = newValue => {
+        this.onExcludeCreateOption = newValue => {
             if (!this.state.memberOfEntryScopeOptions.includes(newValue)) {
                 this.setState({
                     memberOfEntryScopeExcludeOptions: [...this.state.memberOfEntryScopeExcludeOptions, newValue],
@@ -297,7 +297,7 @@ class MemberOf extends React.Component {
 
         // Modal scope and exclude Scope
         // Handle scope subtree
-        this.handleConfigScopeSelect = (event, selection) => {
+        this.onConfigScopeSelect = (event, selection) => {
             if (this.state.configEntryScope.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -314,18 +314,18 @@ class MemberOf extends React.Component {
                 );
             }
         };
-        this.handleConfigScopeToggle = isConfigSubtreeScopeOpen => {
+        this.onConfigScopeToggle = isConfigSubtreeScopeOpen => {
             this.setState({
                 isConfigSubtreeScopeOpen
             }, () => { this.validateModal() });
         };
-        this.handleConfigScopeClear = () => {
+        this.onConfigScopeClear = () => {
             this.setState({
                 configEntryScope: [],
                 isConfigSubtreeScopeOpen: false
             }, () => { this.validateModal() });
         };
-        this.handleConfigCreateOption = newValue => {
+        this.onConfigCreateOption = newValue => {
             if (!this.state.configEntryScopeOptions.includes(newValue)) {
                 this.setState({
                     configEntryScopeOptions: [...this.state.configEntryScopeOptions, newValue],
@@ -335,7 +335,7 @@ class MemberOf extends React.Component {
         };
 
         // Handle Exclude Scope subtree
-        this.handleConfigExcludeScopeSelect = (event, selection) => {
+        this.onConfigExcludeScopeSelect = (event, selection) => {
             if (this.state.configEntryScopeExcludeSubtree.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -352,18 +352,18 @@ class MemberOf extends React.Component {
                 );
             }
         };
-        this.handleConfigExcludeScopeToggle = isConfigExcludeScopeOpen => {
+        this.onConfigExcludeScopeToggle = isConfigExcludeScopeOpen => {
             this.setState({
                 isConfigExcludeScopeOpen
             }, () => { this.validateModal() });
         };
-        this.handleConfigExcludeScopeClear = () => {
+        this.onConfigExcludeScopeClear = () => {
             this.setState({
                 configEntryScopeExcludeSubtree: [],
                 isConfigExcludeScopeOpen: false
             }, () => { this.validateModal() });
         };
-        this.handleConfigExcludeCreateOption = newValue => {
+        this.onConfigExcludeCreateOption = newValue => {
             if (!this.state.configEntryScopeExcludeOptions.includes(newValue)) {
                 this.setState({
                     configEntryScopeExcludeOptions: [...this.state.configEntryScopeExcludeOptions, newValue],
@@ -371,15 +371,6 @@ class MemberOf extends React.Component {
                 }, () => { this.validateModal() });
             }
         };
-    }
-
-    handleToggleFixupModal() {
-        this.setState(prevState => ({
-            fixupModalShow: !prevState.fixupModalShow,
-            fixupDN: "",
-            fixupFilter: "",
-            savingModal: false,
-        }));
     }
 
     validateConfig() {
@@ -404,7 +395,7 @@ class MemberOf extends React.Component {
 
         // Check required attributes
         for (const attr of reqAttrs) {
-            if (this.state[attr] === "") {
+            if (this.state[attr] == "") {
                 all_good = false;
                 errObj[attr] = true;
             }
@@ -412,7 +403,7 @@ class MemberOf extends React.Component {
 
         // Check required Lists are not empty
         for (const attr of reqLists) {
-            if (this.state[attr].length === 0) {
+            if (this.state[attr].length == 0) {
                 all_good = false;
                 errObj[attr] = true;
             }
@@ -420,7 +411,7 @@ class MemberOf extends React.Component {
 
         // Check DN attrs
         for (const attr of dnAttrs) {
-            if (this.state[attr] !== "" && !valid_dn(this.state[attr])) {
+            if (this.state[attr] != "" && !valid_dn(this.state[attr])) {
                 errObj[attr] = true;
                 all_good = false;
             }
@@ -456,7 +447,7 @@ class MemberOf extends React.Component {
                 'memberOfConfigEntry', 'memberOfAttr', 'memberOfAutoAddOC'
             ];
             for (const check_attr of configAttrs) {
-                if (this.state[check_attr] !== this.state['_' + check_attr]) {
+                if (this.state[check_attr] != this.state['_' + check_attr]) {
                     all_good = true;
                     break;
                 }
@@ -490,7 +481,7 @@ class MemberOf extends React.Component {
 
         // Check required attributes
         for (const attr of reqAttrs) {
-            if (this.state[attr] === "") {
+            if (this.state[attr] == "") {
                 all_good = false;
                 errObj[attr] = true;
             }
@@ -498,7 +489,7 @@ class MemberOf extends React.Component {
 
         // Check required Lists are not empty
         for (const attr of reqLists) {
-            if (this.state[attr].length === 0) {
+            if (this.state[attr].length == 0) {
                 all_good = false;
                 errObj[attr] = true;
             }
@@ -506,7 +497,7 @@ class MemberOf extends React.Component {
 
         // Check DN attrs
         for (const attr of dnAttrs) {
-            if (this.state[attr] !== "" && !valid_dn(this.state[attr])) {
+            if (this.state[attr] != "" && !valid_dn(this.state[attr])) {
                 errObj[attr] = true;
                 all_good = false;
                 break;
@@ -542,7 +533,7 @@ class MemberOf extends React.Component {
                 'configAllBackends', 'configSkipNested'
             ];
             for (const check_attr of configAttrs) {
-                if (this.state[check_attr] !== this.state['_' + check_attr]) {
+                if (this.state[check_attr] != this.state['_' + check_attr]) {
                     all_good = true;
                     break;
                 }
@@ -568,7 +559,7 @@ class MemberOf extends React.Component {
         }, () => { this.validateModal() });
     }
 
-    handleShowConfirmDelete() {
+    showConfirmDelete() {
         this.setState({
             showConfirmDelete: true,
             modalChecked: false,
@@ -584,7 +575,7 @@ class MemberOf extends React.Component {
         });
     }
 
-    onChange(e) {
+    handleChange(e) {
         // Generic handler for things that don't need validating
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
         this.setState({
@@ -600,7 +591,7 @@ class MemberOf extends React.Component {
         }));
     }
 
-    handleRunFixup() {
+    runFixup() {
         if (!this.state.fixupDN) {
             this.props.addNotification("warning", "Fixup DN is required.");
         } else {
@@ -619,7 +610,7 @@ class MemberOf extends React.Component {
             }
 
             this.props.toggleLoadingHandler();
-            log_cmd("handleRunFixup", "Run fixup MemberOf Plugin ", cmd);
+            log_cmd("runFixup", "Run fixup MemberOf Plugin ", cmd);
             cockpit
                     .spawn(cmd, {
                         superuser: true,
@@ -649,7 +640,7 @@ class MemberOf extends React.Component {
         }
     }
 
-    handleOpenModal() {
+    openModal() {
         if (!this.state.memberOfConfigEntry) {
             this.setState({
                 configEntryModalShow: true,
@@ -703,11 +694,11 @@ class MemberOf extends React.Component {
                                 : configEntry.memberofautoaddoc[0],
                             configAllBackends: !(
                                 configEntry.memberofallbackends === undefined ||
-                            configEntry.memberofallbackends[0] === "off"
+                            configEntry.memberofallbackends[0] == "off"
                             ),
                             configSkipNested: !(
                                 configEntry.memberofskipnested === undefined ||
-                            configEntry.memberofskipnested[0] === "off"
+                            configEntry.memberofskipnested[0] == "off"
                             ),
                             configConfigEntry:
                             configEntry["nsslapd-pluginConfigArea"] === undefined
@@ -765,7 +756,7 @@ class MemberOf extends React.Component {
         }
     }
 
-    handleCloseModal() {
+    closeModal() {
         this.setState({ configEntryModalShow: false });
     }
 
@@ -781,7 +772,7 @@ class MemberOf extends React.Component {
             configSkipNested
         } = this.state;
 
-        if (configAttr.length === 0 || configGroupAttr.length === 0) {
+        if (configAttr.length == 0 || configGroupAttr.length == 0) {
             this.props.addNotification(
                 "warning",
                 "Config Attribute and Group Attribute are required."
@@ -797,18 +788,18 @@ class MemberOf extends React.Component {
                 action,
                 configDN,
                 "--attr",
-                configAttr || action === "add" ? configAttr : "delete",
+                configAttr || action == "add" ? configAttr : "delete",
                 "--allbackends",
                 configAllBackends ? "on" : "off",
                 "--skipnested",
                 configSkipNested ? "on" : "off",
                 "--autoaddoc",
-                configAutoAddOC || action === "add" ? configAutoAddOC : "delete",
+                configAutoAddOC || action == "add" ? configAutoAddOC : "delete",
             ];
 
             // Delete attributes if the user set an empty value to the field
             cmd = [...cmd, "--scope"];
-            if (configEntryScope.length !== 0) {
+            if (configEntryScope.length != 0) {
                 for (const value of configEntryScope) {
                     cmd = [...cmd, value];
                 }
@@ -816,7 +807,7 @@ class MemberOf extends React.Component {
                 cmd = [...cmd, "delete"];
             }
             cmd = [...cmd, "--exclude"];
-            if (configEntryScopeExcludeSubtree.length !== 0) {
+            if (configEntryScopeExcludeSubtree.length != 0) {
                 for (const value of configEntryScopeExcludeSubtree) {
                     cmd = [...cmd, value];
                 }
@@ -824,7 +815,7 @@ class MemberOf extends React.Component {
                 cmd = [...cmd, "delete"];
             }
             cmd = [...cmd, "--groupattr"];
-            if (configGroupAttr.length !== 0) {
+            if (configGroupAttr.length != 0) {
                 for (const value of configGroupAttr) {
                     cmd = [...cmd, value];
                 }
@@ -846,10 +837,10 @@ class MemberOf extends React.Component {
                         console.info("memberOfOperation", "Result", content);
                         this.props.addNotification(
                             "success",
-                            `Config entry ${configDN} was successfully ${action === "set" ? "edit" : "add"}ed`
+                            `Config entry ${configDN} was successfully ${action == "set" ? "edit" : "add"}ed`
                         );
                         this.props.pluginListHandler();
-                        this.handleCloseModal();
+                        this.closeModal();
                         this.setState({
                             savingModal: false,
                         });
@@ -861,7 +852,7 @@ class MemberOf extends React.Component {
                             `Error during the config entry ${action} operation - ${errMsg.desc}`
                         );
                         this.props.pluginListHandler();
-                        this.handleCloseModal();
+                        this.closeModal();
                         this.setState({
                             savingModal: true,
                         });
@@ -897,7 +888,7 @@ class MemberOf extends React.Component {
                         `Config entry ${this.state.configDN} was successfully deleted`
                     );
                     this.props.pluginListHandler();
-                    this.handleCloseModal();
+                    this.closeModal();
                     this.setState({
                         modalSpinning: false,
                     });
@@ -909,18 +900,18 @@ class MemberOf extends React.Component {
                         `Error during the config entry removal operation - ${errMsg.desc}`
                     );
                     this.props.pluginListHandler();
-                    this.handleCloseModal();
+                    this.closeModal();
                     this.setState({
                         modalSpinning: false,
                     });
                 });
     }
 
-    handleAddConfig() {
+    addConfig() {
         this.cmdOperation("add");
     }
 
-    handleEditConfig() {
+    editConfig() {
         this.cmdOperation("set");
     }
 
@@ -943,11 +934,11 @@ class MemberOf extends React.Component {
                         : pluginRow.memberofautoaddoc[0],
                 memberOfAllBackends: !(
                     pluginRow.memberofallbackends === undefined ||
-                    pluginRow.memberofallbackends[0] === "off"
+                    pluginRow.memberofallbackends[0] == "off"
                 ),
                 memberOfSkipNested: !(
                     pluginRow.memberofskipnested === undefined ||
-                    pluginRow.memberofskipnested[0] === "off"
+                    pluginRow.memberofskipnested[0] == "off"
                 ),
                 memberOfConfigEntry:
                     pluginRow["nsslapd-pluginConfigArea"] === undefined
@@ -963,11 +954,11 @@ class MemberOf extends React.Component {
                         : pluginRow.memberofautoaddoc[0],
                 _memberOfAllBackends: !(
                     pluginRow.memberofallbackends === undefined ||
-                    pluginRow.memberofallbackends[0] === "off"
+                    pluginRow.memberofallbackends[0] == "off"
                 ),
                 _memberOfSkipNested: !(
                     pluginRow.memberofskipnested === undefined ||
-                    pluginRow.memberofskipnested[0] === "off"
+                    pluginRow.memberofskipnested[0] == "off"
                 ),
                 _memberOfConfigEntry:
                     pluginRow["nsslapd-pluginConfigArea"] === undefined
@@ -1013,7 +1004,7 @@ class MemberOf extends React.Component {
         });
     }
 
-    handleSaveConfig() {
+    saveConfig() {
         const {
             memberOfAttr,
             memberOfGroupAttr,
@@ -1046,7 +1037,7 @@ class MemberOf extends React.Component {
 
         // Delete attributes if the user set an empty value to the field
         cmd = [...cmd, "--scope"];
-        if (memberOfEntryScope.length !== 0) {
+        if (memberOfEntryScope.length != 0) {
             for (const value of memberOfEntryScope) {
                 cmd = [...cmd, value];
             }
@@ -1055,7 +1046,7 @@ class MemberOf extends React.Component {
         }
 
         cmd = [...cmd, "--exclude"];
-        if (memberOfEntryScopeExcludeSubtree.length !== 0) {
+        if (memberOfEntryScopeExcludeSubtree.length != 0) {
             for (const value of memberOfEntryScopeExcludeSubtree) {
                 cmd = [...cmd, value];
             }
@@ -1064,7 +1055,7 @@ class MemberOf extends React.Component {
         }
 
         cmd = [...cmd, "--groupattr"];
-        if (memberOfGroupAttr.length !== 0) {
+        if (memberOfGroupAttr.length != 0) {
             for (const value of memberOfGroupAttr) {
                 cmd = [...cmd, value];
             }
@@ -1075,7 +1066,7 @@ class MemberOf extends React.Component {
         this.setState({
             saving: true
         });
-        log_cmd("handleSaveConfig", `Save MemberOf Plugin`, cmd);
+        log_cmd("saveConfig", `Save MemberOf Plugin`, cmd);
         cockpit
                 .spawn(cmd, {
                     superuser: true,
@@ -1154,13 +1145,13 @@ class MemberOf extends React.Component {
         let modalButtons = [];
         if (!newEntry) {
             modalButtons = [
-                <Button key="del" variant="primary" onClick={this.handleShowConfirmDelete}>
+                <Button key="del" variant="primary" onClick={this.showConfirmDelete}>
                     Delete Config
                 </Button>,
                 <Button
                     key="save"
                     variant="primary"
-                    onClick={this.handleEditConfig}
+                    onClick={this.editConfig}
                     isDisabled={saveBtnDisabledModal || savingModal}
                     isLoading={savingModal}
                     spinnerAriaValueText={savingModal ? "Saving" : undefined}
@@ -1168,7 +1159,7 @@ class MemberOf extends React.Component {
                 >
                     {savingModal ? "Saving ..." : "Save Config"}
                 </Button>,
-                <Button key="cancel" variant="link" onClick={this.handleCloseModal}>
+                <Button key="cancel" variant="link" onClick={this.closeModal}>
                     Cancel
                 </Button>
             ];
@@ -1177,7 +1168,7 @@ class MemberOf extends React.Component {
                 <Button
                     key="add"
                     variant="primary"
-                    onClick={this.handleAddConfig}
+                    onClick={this.addConfig}
                     isDisabled={saveBtnDisabledModal || savingModal}
                     isLoading={savingModal}
                     spinnerAriaValueText={savingModal ? "Saving" : undefined}
@@ -1185,7 +1176,7 @@ class MemberOf extends React.Component {
                 >
                     {savingModal ? "Adding ..." : "Add Config"}
                 </Button>,
-                <Button key="cancel" variant="link" onClick={this.handleCloseModal}>
+                <Button key="cancel" variant="link" onClick={this.closeModal}>
                     Cancel
                 </Button>
             ];
@@ -1198,17 +1189,17 @@ class MemberOf extends React.Component {
                     aria-labelledby="ds-modal"
                     title="MemberOf Plugin FixupTask"
                     isOpen={fixupModalShow}
-                    onClose={this.handleToggleFixupModal}
+                    onClose={this.toggleFixupModal}
                     actions={[
                         <Button
                             key="confirm"
                             variant="primary"
-                            onClick={this.handleRunFixup}
+                            onClick={this.runFixup}
                             isDisabled={!valid_dn(fixupDN)}
                         >
                             Run
                         </Button>,
-                        <Button key="cancel" variant="link" onClick={this.handleToggleFixupModal}>
+                        <Button key="cancel" variant="link" onClick={this.toggleFixupModal}>
                             Cancel
                         </Button>
                     ]}
@@ -1266,7 +1257,7 @@ class MemberOf extends React.Component {
                     aria-labelledby="ds-modal"
                     title="Manage MemberOf Plugin Shared Config Entry"
                     isOpen={configEntryModalShow}
-                    onClose={this.handleCloseModal}
+                    onClose={this.closeModal}
                     actions={modalButtons}
                 >
                     <Form isHorizontal autoComplete="off">
@@ -1298,9 +1289,9 @@ class MemberOf extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeahead}
                                     typeAheadAriaLabel="Type a member attribute"
-                                    onToggle={this.handleConfigAttrToggle}
-                                    onSelect={this.handleConfigAttrSelect}
-                                    onClear={this.handleConfigAttrClear}
+                                    onToggle={this.onConfigAttrToggle}
+                                    onSelect={this.onConfigAttrSelect}
+                                    onClear={this.onConfigAttrClear}
                                     selections={configAttr}
                                     isOpen={this.state.isConfigAttrOpen}
                                     aria-labelledby="typeAhead-config-attr"
@@ -1325,9 +1316,9 @@ class MemberOf extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type a member group attribute"
-                                    onToggle={this.handleConfigGroupAttrToggle}
-                                    onSelect={this.handleConfigGroupAttrSelect}
-                                    onClear={this.handleConfigGroupAttrClear}
+                                    onToggle={this.onConfigGroupAttrToggle}
+                                    onSelect={this.onConfigGroupAttrSelect}
+                                    onClear={this.onConfigGroupAttrClear}
                                     selections={configGroupAttr}
                                     isOpen={this.state.isConfigGroupAttrOpen}
                                     aria-labelledby="typeAhead-config-group-attr"
@@ -1352,16 +1343,16 @@ class MemberOf extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type a subtree DN"
-                                    onToggle={this.handleConfigScopeToggle}
-                                    onSelect={this.handleConfigScopeSelect}
-                                    onClear={this.handleConfigScopeClear}
+                                    onToggle={this.onConfigScopeToggle}
+                                    onSelect={this.onConfigScopeSelect}
+                                    onClear={this.onConfigScopeClear}
                                     selections={configEntryScope}
                                     isOpen={isConfigSubtreeScopeOpen}
                                     aria-labelledby="typeAhead-subtrees"
                                     placeholderText="Type a subtree DN..."
                                     noResultsFoundText="There are no matching entries"
                                     isCreatable
-                                    onCreateOption={this.handleConfigCreateOption}
+                                    onCreateOption={this.onConfigCreateOption}
                                     validated={errorModal.configEntryScope ? "error" : "default"}
                                 >
                                     {[""].map((dn, index) => (
@@ -1393,16 +1384,16 @@ class MemberOf extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type a subtree DN"
-                                    onToggle={this.handleConfigExcludeScopeToggle}
-                                    onSelect={this.handleConfigExcludeScopeSelect}
-                                    onClear={this.handleConfigExcludeScopeClear}
+                                    onToggle={this.onConfigExcludeScopeToggle}
+                                    onSelect={this.onConfigExcludeScopeSelect}
+                                    onClear={this.onConfigExcludeScopeClear}
                                     selections={configEntryScopeExcludeSubtree}
                                     isOpen={isConfigExcludeScopeOpen}
                                     aria-labelledby="typeAhead-subtrees"
                                     placeholderText="Type a subtree DN..."
                                     noResultsFoundText="There are no matching entries"
                                     isCreatable
-                                    onCreateOption={this.handleConfigExcludeCreateOption}
+                                    onCreateOption={this.onConfigExcludeCreateOption}
                                     validated={errorModal.configEntryScopeExcludeSubtree ? "error" : "default"}
                                 >
                                     {[""].map((dn, index) => (
@@ -1468,9 +1459,9 @@ class MemberOf extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeahead}
                                     typeAheadAriaLabel="Type a member attribute"
-                                    onToggle={this.handleMemberOfAttrToggle}
-                                    onSelect={this.handleMemberOfAttrSelect}
-                                    onClear={this.handleMemberOfAttrClear}
+                                    onToggle={this.onMemberOfAttrToggle}
+                                    onSelect={this.onMemberOfAttrSelect}
+                                    onClear={this.onMemberOfAttrClear}
                                     selections={memberOfAttr}
                                     isOpen={this.state.isMemberOfAttrOpen}
                                     aria-labelledby="typeAhead-memberof-attr"
@@ -1495,9 +1486,9 @@ class MemberOf extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type a member group attribute"
-                                    onToggle={this.handleMemberOfGroupAttrToggle}
-                                    onSelect={this.handleMemberOfGroupAttrSelect}
-                                    onClear={this.handleMemberOfGroupAttrClear}
+                                    onToggle={this.onMemberOfGroupAttrToggle}
+                                    onSelect={this.onMemberOfGroupAttrSelect}
+                                    onClear={this.onMemberOfGroupAttrClear}
                                     selections={memberOfGroupAttr}
                                     isOpen={this.state.isMemberOfGroupAttrOpen}
                                     aria-labelledby="typeAhead-memberof-group-attr"
@@ -1522,16 +1513,16 @@ class MemberOf extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type a subtree DN"
-                                    onToggle={this.handleSubtreeScopeToggle}
-                                    onSelect={this.handleSubtreeScopeSelect}
-                                    onClear={this.handleSubtreeScopeClear}
+                                    onToggle={this.onSubtreeScopeToggle}
+                                    onSelect={this.onSubtreeScopeSelect}
+                                    onClear={this.onSubtreeScopeClear}
                                     selections={memberOfEntryScope}
                                     isOpen={isSubtreeScopeOpen}
                                     aria-labelledby="typeAhead-subtrees"
                                     placeholderText="Type a subtree DN..."
                                     noResultsFoundText="There are no matching entries"
                                     isCreatable
-                                    onCreateOption={this.handleSubtreeScopeCreateOption}
+                                    onCreateOption={this.onSubtreeScopeCreateOption}
                                     validated={error.memberOfEntryScope ? "error" : "default"}
                                 >
                                     {[""].map((dn, index) => (
@@ -1563,16 +1554,16 @@ class MemberOf extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type a subtree DN"
-                                    onToggle={this.handleExcludeScopeToggle}
-                                    onSelect={this.handleExcludeScopeSelect}
-                                    onClear={this.handleExcludeScopeClear}
+                                    onToggle={this.onExcludeScopeToggle}
+                                    onSelect={this.onExcludeScopeSelect}
+                                    onClear={this.onExcludeScopeClear}
                                     selections={memberOfEntryScopeExcludeSubtree}
                                     isOpen={isExcludeScopeOpen}
                                     aria-labelledby="typeAhead-subtrees"
                                     placeholderText="Type a subtree DN..."
                                     noResultsFoundText="There are no matching entries"
                                     isCreatable
-                                    onCreateOption={this.handleExcludeCreateOption}
+                                    onCreateOption={this.onExcludeCreateOption}
                                     validated={error.memberOfEntryScopeExcludeSubtree ? "error" : "default"}
                                 >
                                     {[""].map((dn, index) => (
@@ -1617,8 +1608,8 @@ class MemberOf extends React.Component {
                             <GridItem className="ds-left-margin" span={3}>
                                 <Button
                                     variant="primary"
-                                    isDisabled={memberOfConfigEntry === "" || !valid_dn(memberOfConfigEntry)}
-                                    onClick={this.handleOpenModal}
+                                    isDisabled={memberOfConfigEntry == "" || !valid_dn(memberOfConfigEntry)}
+                                    onClick={this.openModal}
                                 >
                                     Manage
                                 </Button>
@@ -1649,7 +1640,7 @@ class MemberOf extends React.Component {
                                 MemberOf Fixup Task<WrenchIcon className="ds-left-margin" />
                             </GridItem>
                             <GridItem span={9}>
-                                <Button className="ds-margin-top" variant="secondary" onClick={this.handleToggleFixupModal}>
+                                <Button className="ds-margin-top" variant="secondary" onClick={this.toggleFixupModal}>
                                     Run Task
                                 </Button>
                             </GridItem>
@@ -1661,7 +1652,7 @@ class MemberOf extends React.Component {
                         isLoading={saving}
                         spinnerAriaValueText={saving ? "Loading" : undefined}
                         variant="primary"
-                        onClick={this.handleSaveConfig}
+                        onClick={this.saveConfig}
                         {...extraPrimaryProps}
                         isDisabled={saveBtnDisabled || saving}
                     >
@@ -1671,7 +1662,7 @@ class MemberOf extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmDelete}
                     closeHandler={this.closeConfirmDelete}
-                    handleChange={this.onChange}
+                    handleChange={this.handleChange}
                     actionHandler={this.deleteConfig}
                     spinning={this.state.modalSpinning}
                     item={this.state.configDN}

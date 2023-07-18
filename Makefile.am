@@ -479,7 +479,6 @@ dist_noinst_HEADERS = \
 	ldap/servers/slapd/filter.h \
 	ldap/servers/slapd/getopt_ext.h \
 	ldap/servers/slapd/getsocketpeer.h \
-	ldap/servers/slapd/haproxy.h \
 	ldap/servers/slapd/intrinsics.h \
 	ldap/servers/slapd/log.h \
 	ldap/servers/slapd/openldapber.h \
@@ -1103,7 +1102,6 @@ libslapd_la_SOURCES = ldap/servers/slapd/add.c \
 	ldap/servers/slapd/filterentry.c \
 	ldap/servers/slapd/generation.c \
 	ldap/servers/slapd/getfilelist.c \
-	ldap/servers/slapd/haproxy.c \
 	ldap/servers/slapd/ldapi.c \
 	ldap/servers/slapd/ldaputil.c \
 	ldap/servers/slapd/lenstr.c \
@@ -1144,7 +1142,6 @@ libslapd_la_SOURCES = ldap/servers/slapd/add.c \
 	ldap/servers/slapd/security_wrappers.c \
 	ldap/servers/slapd/slapd_plhash.c \
 	ldap/servers/slapd/slapi_counter.c \
-	ldap/servers/slapd/slapi-memberof.c \
 	ldap/servers/slapd/slapi2runtime.c \
 	ldap/servers/slapd/snmp_collator.c \
 	ldap/servers/slapd/sort.c \
@@ -1916,7 +1913,6 @@ test_slapd_SOURCES = test/main.c \
 	test/libslapd/schema/filter_validate.c \
 	test/libslapd/operation/v3_compat.c \
 	test/libslapd/spal/meminfo.c \
-	test/libslapd/haproxy/parse.c \
 	test/plugins/test.c \
 	test/plugins/pwdstorage/pbkdf2.c
 
@@ -2093,16 +2089,16 @@ lib389-install: lib389
 
 if ENABLE_COCKPIT
 
-NODE_MODULES_TEST = src/cockpit/389-console/package-lock.json
+NODE_MODULES_TEST = src/cockpit/389-console/node_modules/webpack
 WEBPACK_TEST = src/cockpit/389-console/cockpit_dist/index.html
 
 # Cockpit UI plugin - we install the dependancies and build the JS sources
 # and then we use install-data-hook for copying the results on 'make install'
 $(NODE_MODULES_TEST):
-	cd src/cockpit/389-console; npm install
+	cd src/cockpit/389-console; make -f node_modules.mk install
 
 $(WEBPACK_TEST): $(NODE_MODULES_TEST)
-	cd src/cockpit/389-console; npx audit-ci; ./build.js
+	cd src/cockpit/389-console; make -f node_modules.mk build-cockpit-plugin
 
 389-console: $(WEBPACK_TEST)
 
@@ -2114,9 +2110,8 @@ $(WEBPACK_TEST): $(NODE_MODULES_TEST)
 	ln -s $$(pwd)/dist ~/.local/share/cockpit/389-console
 
 389-console-clean:
-	cd $(srcdir)/src/cockpit/389-console; \
-	rm -rf dist; \
-	rm -rf cockpit_dist
+	cd $(srcdir)/src/cockpit/389-console; make -f node_modules.mk clean
+
 endif
 
 if HAVE_DOXYGEN

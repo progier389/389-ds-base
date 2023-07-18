@@ -159,7 +159,7 @@ export class Monitor extends React.Component {
                         id: suffix + "-agmts",
                         item: "agmt-mon",
                         type: "repl-mon",
-                        suffix
+                        suffix: suffix
                     },
                     {
                         name: "Winsync Agreements",
@@ -167,7 +167,7 @@ export class Monitor extends React.Component {
                         id: suffix + "-winsync",
                         item: "winsync-mon",
                         type: "repl-mon",
-                        suffix
+                        suffix: suffix
                     },
                     {
                         name: "Tasks",
@@ -175,7 +175,7 @@ export class Monitor extends React.Component {
                         id: suffix + "-tasks",
                         item: "task-mon",
                         type: "repl-mon",
-                        suffix
+                        suffix: suffix
                     },
                     {
                         name: "Conflict Entries",
@@ -183,7 +183,7 @@ export class Monitor extends React.Component {
                         id: suffix + "-conflict",
                         item: "conflict-mon",
                         type: "repl-mon",
-                        suffix
+                        suffix: suffix
                     },
                 ],
             });
@@ -464,7 +464,7 @@ export class Monitor extends React.Component {
                     }
                     this.setState({
                         replicatedSuffixes: config.items,
-                        replSuffix,
+                        replSuffix: replSuffix,
                     });
                 }, this.loadDiskSpace());
     }
@@ -713,8 +713,8 @@ export class Monitor extends React.Component {
                             glues: config.items,
 
                         },
-                        replInitLoaded: true,
                         replLoading: false,
+                        replInitLoaded: true
                     });
                 })
                 .fail(() => {
@@ -756,13 +756,16 @@ export class Monitor extends React.Component {
                     this.setState({
                         credRows,
                         aliasRows,
+                        replLoading: false,
                         replInitLoaded: true
                     });
                 })
                 .fail(err => {
-                    // No dsrc file, thats ok
                     const errMsg = JSON.parse(err);
-                    console.log(`loadDSRC: Could not load .dsrc file: ${errMsg.desc}`);
+                    this.props.addNotification(
+                        "error",
+                        `Failed to get .dsrc information: ${errMsg.desc}`
+                    );
                     this.setState({
                         replLoading: false,
                     });
@@ -859,7 +862,6 @@ export class Monitor extends React.Component {
                     .spawn(cmd, { superuser: true, err: "message" })
                     .done(content => {
                         const config = JSON.parse(content);
-                        this.loadDSRC();
                         this.setState({
                             [treeViewItem.suffix]: {
                                 ...this.state[treeViewItem.suffix],
@@ -881,7 +883,7 @@ export class Monitor extends React.Component {
                         // Notification of failure (could only be server down)
                         this.setState({
                             replLoading: false,
-                        }, this.loadDSRC);
+                        });
                     });
         } else {
             // We should enable it here because ReplMonitor never will be mounted
@@ -941,7 +943,7 @@ export class Monitor extends React.Component {
         if (this.state.loaded) {
             if (this.state.node_name === "database-monitor" || this.state.node_name === "") {
                 if (this.state.ldbmLoading) {
-                    monitor_element = (
+                    monitor_element =
                         <div className="ds-margin-top-xlg ds-center">
                             <TextContent>
                                 <Text component={TextVariants.h3}>
@@ -949,20 +951,18 @@ export class Monitor extends React.Component {
                                 </Text>
                             </TextContent>
                             <Spinner className="ds-margin-top-lg" size="xl" />
-                        </div>
-                    );
+                        </div>;
                 } else {
-                    monitor_element = (
+                    monitor_element =
                         <DatabaseMonitor
                             data={this.state.ldbmData}
                             enableTree={this.enableTree}
                             serverId={this.props.serverId}
-                        />
-                    );
+                        />;
                 }
             } else if (this.state.node_name === "server-monitor") {
                 if (this.state.serverLoading) {
-                    monitor_element = (
+                    monitor_element =
                         <div className="ds-margin-top-xlg ds-center">
                             <TextContent>
                                 <Text component={TextVariants.h3}>
@@ -970,60 +970,53 @@ export class Monitor extends React.Component {
                                 </Text>
                             </TextContent>
                             <Spinner className="ds-margin-top-lg" size="xl" />
-                        </div>
-                    );
+                        </div>;
                 } else {
-                    monitor_element = (
+                    monitor_element =
                         <ServerMonitor
                             data={this.state.serverData}
-                            handleReload={this.reloadServer}
+                            reload={this.reloadServer}
                             serverId={this.props.serverId}
                             disks={this.state.disks}
-                            handleReloadDisks={this.reloadDisks}
+                            reloadDisks={this.reloadDisks}
                             snmpData={this.state.snmpData}
                             snmpReload={this.reloadSNMP}
                             enableTree={this.enableTree}
-                        />
-                    );
+                        />;
                 }
             } else if (this.state.node_name === "access-log-monitor") {
-                monitor_element = (
+                monitor_element =
                     <AccessLogMonitor
                         logLocation={this.state.accesslogLocation}
                         enableTree={this.enableTree}
-                    />
-                );
+                    />;
             } else if (this.state.node_name === "audit-log-monitor") {
-                monitor_element = (
+                monitor_element =
                     <AuditLogMonitor
                         logLocation={this.state.auditlogLocation}
                         enableTree={this.enableTree}
-                    />
-                );
+                    />;
             } else if (this.state.node_name === "auditfail-log-monitor") {
-                monitor_element = (
+                monitor_element =
                     <AuditFailLogMonitor
                         logLocation={this.state.auditfaillogLocation}
                         enableTree={this.enableTree}
-                    />
-                );
+                    />;
             } else if (this.state.node_name === "error-log-monitor") {
-                monitor_element = (
+                monitor_element =
                     <ErrorLogMonitor
                         logLocation={this.state.errorlogLocation}
                         enableTree={this.enableTree}
-                    />
-                );
+                    />;
             } else if (this.state.node_name === "security-log-monitor") {
-                monitor_element = (
+                monitor_element =
                     <SecurityLogMonitor
                         logLocation={this.state.securitylogLocation}
                         enableTree={this.enableTree}
-                    />
-                );
+                    />;
             } else if (this.state.node_type === "repl-mon") {
                 if (this.state.replLoading) {
-                    monitor_element = (
+                    monitor_element =
                         <div className="ds-margin-top-xlg ds-center">
                             <TextContent>
                                 <Text component={TextVariants.h3}>
@@ -1031,11 +1024,10 @@ export class Monitor extends React.Component {
                                 </Text>
                             </TextContent>
                             <Spinner className="ds-margin-top-lg" size="xl" />
-                        </div>
-                    );
+                        </div>;
                 } else {
                     if (this.state.node_name === "sync-report") {
-                        monitor_element = (
+                        monitor_element =
                             <div>
                                 <ReplMonitor
                                     serverId={this.props.serverId}
@@ -1044,13 +1036,12 @@ export class Monitor extends React.Component {
                                     aliasRows={this.state.aliasRows}
                                     addNotification={this.props.addNotification}
                                     enableTree={this.enableTree}
-                                    handleReload={this.onHandleLoadMonitorReplication}
+                                    reload={this.onHandleLoadMonitorReplication}
                                     key={this.state.node_name}
                                 />
-                            </div>
-                        );
+                            </div>;
                     } else if (this.state.node_item === "agmt-mon") {
-                        monitor_element = (
+                        monitor_element =
                             <div>
                                 <ReplAgmtMonitor
                                     suffix={this.state.replSuffix}
@@ -1059,13 +1050,12 @@ export class Monitor extends React.Component {
                                     addNotification={this.props.addNotification}
                                     reloadAgmts={this.reloadReplAgmts}
                                     enableTree={this.enableTree}
-                                    handelReload={this.onHandleLoadMonitorReplication}
+                                    reload={this.onHandleLoadMonitorReplication}
                                     key={this.state.node_name}
                                 />
-                            </div>
-                        );
+                            </div>;
                     } else if (this.state.node_item === "winsync-mon") {
-                        monitor_element = (
+                        monitor_element =
                             <div>
                                 <ReplAgmtWinsync
                                     suffix={this.state.replSuffix}
@@ -1074,13 +1064,12 @@ export class Monitor extends React.Component {
                                     addNotification={this.props.addNotification}
                                     reloadAgmts={this.reloadReplWinsyncAgmts}
                                     enableTree={this.enableTree}
-                                    handleReload={this.onHandleLoadMonitorReplication}
+                                    reload={this.onHandleLoadMonitorReplication}
                                     key={this.state.node_name}
                                 />
-                            </div>
-                        );
+                            </div>;
                     } else if (this.state.node_item === "task-mon") {
-                        monitor_element = (
+                        monitor_element =
                             <div>
                                 <ReplMonTasks
                                     suffix={this.state.replSuffix}
@@ -1088,13 +1077,12 @@ export class Monitor extends React.Component {
                                     data={this.state[this.state.replSuffix]}
                                     addNotification={this.props.addNotification}
                                     enableTree={this.enableTree}
-                                    handleReload={this.onHandleLoadMonitorReplication}
+                                    reload={this.onHandleLoadMonitorReplication}
                                     key={this.state.node_name}
                                 />
-                            </div>
-                        );
+                            </div>;
                     } else if (this.state.node_item === "conflict-mon") {
-                        monitor_element = (
+                        monitor_element =
                             <div>
                                 <ReplMonConflict
                                     suffix={this.state.replSuffix}
@@ -1103,17 +1091,16 @@ export class Monitor extends React.Component {
                                     addNotification={this.props.addNotification}
                                     reloadConflicts={this.loadConflicts}
                                     enableTree={this.enableTree}
-                                    handleReload={this.onHandleLoadMonitorReplication}
+                                    reload={this.onHandleLoadMonitorReplication}
                                     key={this.state.node_name}
                                 />
-                            </div>
-                        );
+                            </div>;
                     }
                 }
             } else if (this.state.node_name !== "") {
                 // suffixes (example)
                 if (this.state.chainingLoading) {
-                    monitor_element = (
+                    monitor_element =
                         <div className="ds-margin-top-xlg ds-center">
                             <TextContent>
                                 <Text component={TextVariants.h3}>
@@ -1121,11 +1108,10 @@ export class Monitor extends React.Component {
                                 </Text>
                             </TextContent>
                             <Spinner className="ds-margin-top-lg" size="xl" />
-                        </div>
-                    );
+                        </div>;
                 } else {
                     if (this.state.node_type === "dblink") {
-                        monitor_element = (
+                        monitor_element =
                             <ChainingMonitor
                                 suffix={this.state.node_text}
                                 bename={this.state.bename}
@@ -1133,11 +1119,10 @@ export class Monitor extends React.Component {
                                 data={this.state[this.state.node_text].chainingData}
                                 enableTree={this.enableTree}
                                 key={this.state.node_text}
-                            />
-                        );
+                            />;
                     } else {
                         // Suffix
-                        monitor_element = (
+                        monitor_element =
                             <SuffixMonitor
                                 serverId={this.props.serverId}
                                 suffix={this.state.node_text}
@@ -1145,12 +1130,11 @@ export class Monitor extends React.Component {
                                 enableTree={this.enableTree}
                                 key={this.state.node_text}
                                 addNotification={this.props.addNotification}
-                            />
-                        );
+                            />;
                     }
                 }
             }
-            monitorPage = (
+            monitorPage =
                 <div className="container-fluid">
                     <div className="ds-container">
                         <div>
@@ -1169,10 +1153,9 @@ export class Monitor extends React.Component {
                             {monitor_element}
                         </div>
                     </div>
-                </div>
-            );
+                </div>;
         } else {
-            monitorPage = (
+            monitorPage =
                 <div className="ds-margin-top-xlg ds-center">
                     <TextContent>
                         <Text component={TextVariants.h3}>
@@ -1180,8 +1163,7 @@ export class Monitor extends React.Component {
                         </Text>
                     </TextContent>
                     <Spinner className="ds-margin-top-lg" size="xl" />
-                </div>
-            );
+                </div>;
         }
 
         return (

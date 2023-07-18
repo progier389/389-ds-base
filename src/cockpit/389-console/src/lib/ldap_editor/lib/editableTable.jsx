@@ -111,7 +111,7 @@ class EditableTable extends React.Component {
             }
         };
 
-        this.handleShowOrHidePassword = () => {
+        this.showOrHidePassword = () => {
             this.setState(({ showPassword }) => ({
                 showPassword: !showPassword
             }));
@@ -126,8 +126,8 @@ class EditableTable extends React.Component {
                 strPathValueIsEmpty,
             });
 
-            const encodedValue = '';
-            const myDecodedValue = `file://${filePath}`;
+            let encodedValue = '';
+            let myDecodedValue = `file://${filePath}`;
 
             const newRows = [...this.state.tableRows];
             newRows[this.state.currentRowIndex].cells[1].props.value = myDecodedValue;
@@ -214,15 +214,15 @@ class EditableTable extends React.Component {
 
                 // Check the file type.
                 encodedValue = this.state.attrIsJpegPhoto
-                    ? isAnImage
-                        ? reader.result.replace(toDel, '')
-                        : ""
+                ? isAnImage
+                    ? reader.result.replace(toDel, '')
+                    : ""
                 // The attribute is a certificate.
-                    : (file.type === 'application/x-x509-ca-cert') ||
+                : (file.type === 'application/x-x509-ca-cert') ||
                 (file.type === 'application/x-x509-user-cert') ||
                 (file.type === 'application/pkix-cert')
-                        ? reader.result.replace(toDel, '')
-                        : "";
+                    ? reader.result.replace(toDel, '')
+                    : "";
 
                 if (encodedValue === "") {
                     console.log('handleFileChange - encodedValue is null. Nothing to do.');
@@ -233,25 +233,23 @@ class EditableTable extends React.Component {
                 let myDecodedValue = "";
                 if (isAnImage) {
                     if (this.state.attrIsJpegPhoto) {
-                        myDecodedValue = (
-                            <img
+                        myDecodedValue = (<img
                             src={`data:image/png;base64,${encodedValue}`}
                             alt=""
-                            style={{ width: '48px' }}
-                            />
-                        );
+                            style={{ width: '48px' }} // height will adjust automatically.
+                            />);
+                    } else {
+
                     }
                 } else {
                     // TODO ==> Decode the certificate
                     // IMPORTANT! ==> Enable the "Confirm" button once the cert decoding is completed.
                     // myDecodedValue = ...
-                    myDecodedValue = (
-                        <div>
-                            <Label icon={<InfoCircleIcon />} color="blue">
-                                Value is too large to display
-                            </Label>
-                        </div>
-                    );
+                    myDecodedValue = (<div>
+                        <Label icon={<InfoCircleIcon />} color="blue" >
+                            Value is too large to display
+                        </Label>
+                        </div>);
                 }
 
                 // console.log(reader.result.substring(0, 100));
@@ -303,7 +301,7 @@ class EditableTable extends React.Component {
         this.props.enableNextStep(foundEmptyValue === undefined);
     }
 
-    onTextInputChange = (newValue, evt, rowIndex, cellIndex) => {
+    handleTextInputChange = (newValue, evt, rowIndex, cellIndex) => {
         const newRows = [...this.state.tableRows];
         newRows[rowIndex].cells[cellIndex].props.editableValue = newValue;
         this.setState({
@@ -311,7 +309,7 @@ class EditableTable extends React.Component {
         });
     };
 
-    handleUpdateEditableRows = (evt, type, isEditable, rowIndex, validationErrors) => {
+    updateEditableRows = (evt, type, isEditable, rowIndex, validationErrors) => {
         // Do not allow to update the DN in the quick update mode.
         // Show a modal dialog to suggest to use the Renaming Wizard.
         if ((this.props.quickUpdate) && (type === 'edit')) {
@@ -342,7 +340,7 @@ class EditableTable extends React.Component {
                 this.setState({
                     isPasswordField: true,
                     pwdRowIndex: rowIndex
-                });
+                 });
                 return;
             } else if (BINARY_ATTRIBUTES.includes(myAttr)) {
                 this.setState({
@@ -376,22 +374,22 @@ class EditableTable extends React.Component {
 
         newRows[rowIndex] = applyCellEdits(newRows[rowIndex], type);
         this.setState({ tableRows: newRows },
-                      () => {
-                          // Check if there is any empty value.
-                          const foundEmptyValue = newRows.find(el => el.cells[1].props.value === '');
-                          if (foundEmptyValue === undefined) {
-                              const noEmptyValueCheck = type === 'save'; // Disable the next button on edit ( type='edit' ).
-                              const namingAttrSet = this.state.namingRowID !== -1;
-                              const enableNext = noEmptyValueCheck && namingAttrSet;
-                              this.props.enableNextStep(enableNext);
-                          } else {
-                              this.props.enableNextStep(false);
-                          }
-                          if (type === 'save') {
-                              const rowDataToSave = this.buildRowDataToSave();
-                              this.props.saveCurrentRows(rowDataToSave, this.state.namingRowID);
-                          }
-                      });
+            () => {
+                // Check if there is any empty value.
+                const foundEmptyValue = newRows.find(el => el.cells[1].props.value === '');
+                if (foundEmptyValue === undefined) {
+                    const noEmptyValueCheck = type === 'save'; // Disable the next button on edit ( type='edit' ).
+                    const namingAttrSet = this.state.namingRowID !== -1;
+                    const enableNext = noEmptyValueCheck && namingAttrSet;
+                    this.props.enableNextStep(enableNext);
+                } else {
+                    this.props.enableNextStep(false);
+                }
+                if (type === 'save') {
+                    const rowDataToSave = this.buildRowDataToSave();
+                    this.props.saveCurrentRows(rowDataToSave, this.state.namingRowID);
+                }
+            });
     };
 
     // Returns an array of row data to store in the parent component.
@@ -405,7 +403,7 @@ class EditableTable extends React.Component {
                 required: datum.required,
                 objectClass: datum.objectClass,
                 rowEditValidationRules: [...datum.rowEditValidationRules],
-            };
+            }
             // Save the encoded (base64) value if it's present.
             if (datum.cells[1].props.encodedvalue) {
                 obj.encodedvalue = datum.cells[1].props.encodedvalue;
@@ -445,17 +443,17 @@ class EditableTable extends React.Component {
                 cells: [
                     {
                         title: (value, rowIndex, cellIndex, props) => (
-                            <>
+                            <React.Fragment>
                                 <EditableTextCell
                                     value={value}
                                     rowIndex={rowIndex}
                                     cellIndex={cellIndex}
                                     props={props}
-                                    handleTextInputChange={this.onTextInputChange}
+                                    handleTextInputChange={this.handleTextInputChange}
                                     isDisabled
                                     inputAriaLabel={attrName}
                                 />
-                            </>
+                            </React.Fragment>
                         ),
                         props: {
                             value: attrName,
@@ -464,17 +462,17 @@ class EditableTable extends React.Component {
                     },
                     {
                         title: (value, rowIndex, cellIndex, props) => (
-                            <>
+                            <React.Fragment>
                                 <EditableTextCell
                                     // isDisabled={myData.isDisabled}
                                     value={value !== "" ? "********" : <Label color="red" icon={<InfoCircleIcon />}> Empty value! </Label>}
                                     rowIndex={rowIndex}
                                     cellIndex={cellIndex}
                                     props={props}
-                                    handleTextInputChange={this.onTextInputChange}
+                                    handleTextInputChange={this.handleTextInputChange}
                                     inputAriaLabel={'_' + value} // To avoid empty property when value is empty.
                                 />
-                            </>
+                            </React.Fragment>
                         ),
                         props: {
                             value: myData.val,
@@ -493,13 +491,13 @@ class EditableTable extends React.Component {
                 cells: [
                     {
                         title: (value, rowIndex, cellIndex, props) => (
-                            <>
+                            <React.Fragment>
                                 <EditableTextCell
                                     value={value}
                                     rowIndex={rowIndex}
                                     cellIndex={cellIndex}
                                     props={props}
-                                    handleTextInputChange={this.onTextInputChange}
+                                    handleTextInputChange={this.handleTextInputChange}
                                     isDisabled
                                     inputAriaLabel={attrName}
                                 />
@@ -519,7 +517,7 @@ class EditableTable extends React.Component {
                                         <a href="#" className="ds-font-size-sm">Naming Attribute</a>
                                     </Popover>
                                 }
-                            </>
+                            </React.Fragment>
                         ),
                         props: {
                             value: attrName,
@@ -528,17 +526,17 @@ class EditableTable extends React.Component {
                     },
                     {
                         title: (value, rowIndex, cellIndex, props) => (
-                            <>
+                            <React.Fragment>
                                 <EditableTextCell
                                     // isDisabled={myData.isDisabled}
                                     value={value === "" ? <Label color="red" icon={<InfoCircleIcon />}> Empty value! </Label> : value}
                                     rowIndex={rowIndex}
                                     cellIndex={cellIndex}
                                     props={props}
-                                    handleTextInputChange={this.onTextInputChange}
+                                    handleTextInputChange={this.handleTextInputChange}
                                     inputAriaLabel={'_' + value} // To avoid empty property when value is empty.
                                 />
-                            </>
+                            </React.Fragment>
                         ),
                         props: {
                             value: myData.val,
@@ -586,12 +584,12 @@ class EditableTable extends React.Component {
                             namingRowID: myName,
                             rdnAttr: myAttr
                         },
-                                      () => {
-                                          this.props.setNamingRowID(myName);
-                                      });
+                        () => {
+                            this.props.setNamingRowID(myName);
+                        });
                     }
                 }]
-                : [];
+                : []
 
         const duplicationAction =
             this.props.isAttributeSingleValued(myAttr)
@@ -603,7 +601,7 @@ class EditableTable extends React.Component {
                             id: generateUniqueId(),
                             attr: myAttr,
                             val: ''
-                        };
+                        }
                         const tableRows = [...this.state.tableRows];
                         const newItem = this.generateSingleRow(myData);
 
@@ -611,14 +609,14 @@ class EditableTable extends React.Component {
                         tableRows.splice(rowIndex + 1, 0, newItem);
 
                         this.setState({ tableRows },
-                                      () => {
-                                          const rowDataToSave = this.buildRowDataToSave();
-                                          this.props.saveCurrentRows(rowDataToSave, this.state.namingRowID);
-                                          // Disable the next step because a duplicated row has no initial value.
-                                          this.props.enableNextStep(false);
-                                      });
-                    }
-                }];
+                            () => {
+                                const rowDataToSave = this.buildRowDataToSave();
+                                this.props.saveCurrentRows(rowDataToSave, this.state.namingRowID);
+                                // Disable the next step because a duplicated row has no initial value.
+                                this.props.enableNextStep(false);
+                                    });
+                                }
+                    }];
 
         const removalAction = this.state.tableRows.length === 1 || rowData.namingAttr ||
             ((this.props.isAttributeRequired(myAttr) || rowData.required) && this.hasSingleOccurrence(myAttr))
@@ -629,21 +627,21 @@ class EditableTable extends React.Component {
                     onClick: (event, rowId) => {
                         const tableRows = this.state.tableRows.filter((aRow) => aRow.cells[0].props.name !== myName);
                         this.setState({ tableRows },
-                                      () => {
-                                          const rowDataToSave = this.buildRowDataToSave();
-                                          const foundEmptyValue = tableRows.find(el => el.cells[1].props.value === '');
-                                          this.props.enableNextStep(foundEmptyValue === undefined);
+                            () => {
+                                const rowDataToSave = this.buildRowDataToSave();
+                                const foundEmptyValue = tableRows.find(el => el.cells[1].props.value === '');
+                                this.props.enableNextStep(foundEmptyValue === undefined);
 
-                                          let namingRowID = this.state.namingRowID;
-                                          if (rowId === namingRowID) {
-                                              namingRowID = -1;
-                                              this.props.setNamingRowID(-1);
-                                              this.props.enableNextStep(false);
-                                          }
+                                let namingRowID = this.state.namingRowID;
+                                if (rowId === namingRowID) {
+                                    namingRowID = -1;
+                                    this.props.setNamingRowID(-1);
+                                    this.props.enableNextStep(false);
+                                }
 
-                                          this.setState({ namingRowID });
-                                          this.props.saveCurrentRows(rowDataToSave, namingRowID);
-                                      });
+                                this.setState({ namingRowID });
+                                this.props.saveCurrentRows(rowDataToSave, namingRowID);
+                            });
                     }
                 }
             ];
@@ -682,14 +680,14 @@ class EditableTable extends React.Component {
                 ...removalAction
             ];
         }
-    };
+    }
 
     render () {
         const {
             tableRows,
             isPasswordField, showPassword,
             showFileUri, isDnModalOpen,
-            fileName,
+            fileName, fileValue,
             attrIsJpegPhoto,
             encodedValueIsEmpty,
             strPathValueIsEmpty,
@@ -718,7 +716,7 @@ class EditableTable extends React.Component {
             : `Type File Path ${attrIsJpegPhoto ? '(Photo)' : '(Certificate)'}`;
 
         return (
-            <>
+            <React.Fragment>
                 { isDnModalOpen &&
                     <Modal
                         id="modal-dn-id"
@@ -736,7 +734,8 @@ class EditableTable extends React.Component {
                         You cannot modify the RDN ( Relative Distinguished Name ) in the <strong>Quick Update</strong> mode.
                         <br />
                         If you want to modify the RDN, please use the <strong>Rename</strong> action option
-                    </Modal>}
+                    </Modal>
+                }
 
                 {isPasswordField &&
                     <Modal
@@ -746,14 +745,12 @@ class EditableTable extends React.Component {
                         isOpen={isPasswordField}
                         onClose={this.handlePasswordToggle}
                         actions={[
-                            <Button
-                                key="confirm" variant="primary" name="confirm"
+                            <Button key="confirm" variant="primary" name="confirm"
                                 onClick={this.handlePwdSave}
                             >
                                 Confirm
                             </Button>,
-                            <Button
-                                key="cancel" variant="link"
+                            <Button key="cancel" variant="link"
                                 onClick={this.handlePasswordToggle}
                             >
                                 Cancel
@@ -771,11 +768,12 @@ class EditableTable extends React.Component {
                             <Button
                                 variant="control"
                                 aria-label="password field icon"
-                                onClick={this.handleShowOrHidePassword}
+                                onClick={this.showOrHidePassword}
                                 icon={showPassword ? <EyeSlashIcon /> : <EyeIcon />}
                             />
                         </InputGroup>
-                    </Modal>}
+                    </Modal>
+                }
 
                 { showFileUri &&
                     <Modal
@@ -821,13 +819,16 @@ class EditableTable extends React.Component {
                         {/* binaryAttrMsg */}
 
                         {((fileName !== '') && encodedValueIsEmpty && strPathValueIsEmpty) &&
-                            <Alert variant="danger" isInline title="There was an issue with the uploaded file ( incorrect type? )." />}
+                            <Alert variant="danger" isInline title="There was an issue with the uploaded file ( incorrect type? )." />
+                        }
                         {isFileTooLarge &&
-                            <Alert variant="danger" isInline title="The file size larger than 128 MB. Use the file path option." />}
+                            <Alert variant="danger" isInline title="The file size larger than 128 MB. Use the file path option." />
+                        }
                         {!attrIsJpegPhoto &&
                             <Label className="ds-margin-top-lg" icon={<InfoCircleIcon />} color="blue">
                                 The certificate must be stored in the Distinguished Encoding Rules (DER) format.
-                            </Label>}
+                            </Label>
+                        }
                         { uploadSelected &&
                             <FileUpload
                                 id="file-upload"
@@ -840,7 +841,8 @@ class EditableTable extends React.Component {
                                 validated={uploadSelected && fileName === "" ? 'error' : 'default'}
                                 hideDefaultPreview
                                 browseButtonText="Choose Binary File"
-                            />}
+                            />
+                        }
                         { !uploadSelected &&
                             <TextInput
                                 value={binaryAttributeFilePath}
@@ -851,11 +853,13 @@ class EditableTable extends React.Component {
                                     : ValidatedOptions.error}
                                 type="text"
                                 aria-label="File input for a binary attribute."
-                            />}
-                    </Modal>}
+                            />
+                        }
+                    </Modal>
+                }
                 <Table
                     actionResolver={this.actionResolver}
-                    onRowEdit={this.handleUpdateEditableRows}
+                    onRowEdit={this.updateEditableRows}
                     dropdownDirection="up"
                     aria-label="Editable Rows Table"
                     variant={TableVariant.compact}
@@ -866,7 +870,7 @@ class EditableTable extends React.Component {
                     <TableHeader />
                     <TableBody />
                 </Table>
-            </>
+            </React.Fragment>
         );
     }
 }
@@ -878,12 +882,14 @@ EditableTable.propTypes = {
     isAttributeRequired: PropTypes.func,
     enableNextStep: PropTypes.func,
     saveCurrentRows: PropTypes.func,
+    allObjectclasses: PropTypes.array,
     disableNamingChange: PropTypes.bool,
 };
 
 EditableTable.defaultProps = {
     wizardEntryDn: "",
     editableTableData: [],
+    allObjectclasses: [],
     disableNamingChange: false
 };
 

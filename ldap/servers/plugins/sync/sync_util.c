@@ -870,7 +870,6 @@ sync_pblock_copy(Slapi_PBlock *src)
     Slapi_Operation *operation;
     Slapi_Operation *operation_new;
     Slapi_Connection *connection;
-    LDAPControl **ctrls = NULL;
     int *scope;
     int *deref;
     int *filter_normalized;
@@ -897,9 +896,7 @@ sync_pblock_copy(Slapi_PBlock *src)
     slapi_pblock_get(src, SLAPI_REQUESTOR_ISROOT, &isroot);
     slapi_pblock_get(src, SLAPI_SEARCH_SIZELIMIT, &sizelimit);
     slapi_pblock_get(src, SLAPI_SEARCH_TIMELIMIT, &timelimit);
-    slapi_pblock_get(src, SLAPI_REQCONTROLS, &ctrls);
     slapi_pblock_get(src, SLAPI_PLUGIN, &pi);
-
 
     Slapi_PBlock *dest = slapi_pblock_new();
     operation_new = slapi_operation_new(0);
@@ -921,7 +918,6 @@ sync_pblock_copy(Slapi_PBlock *src)
     slapi_pblock_set(dest, SLAPI_REQUESTOR_ISROOT, &isroot);
     slapi_pblock_set(dest, SLAPI_SEARCH_SIZELIMIT, &sizelimit);
     slapi_pblock_set(dest, SLAPI_SEARCH_TIMELIMIT, &timelimit);
-    slapi_pblock_set(dest, SLAPI_REQCONTROLS, ctrls);
     slapi_pblock_set(dest, SLAPI_PLUGIN, pi);
 
     return dest;

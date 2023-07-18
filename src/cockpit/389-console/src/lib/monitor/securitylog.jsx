@@ -30,7 +30,7 @@ export class SecurityLogMonitor extends React.Component {
             securityLines: "50",
         };
 
-        this.handleRefreshSecurityLog = this.handleRefreshSecurityLog.bind(this);
+        this.refreshSecurityLog = this.refreshSecurityLog.bind(this);
         this.handleSecurityChange = this.handleSecurityChange.bind(this);
         this.securityRefreshCont = this.securityRefreshCont.bind(this);
     }
@@ -43,7 +43,7 @@ export class SecurityLogMonitor extends React.Component {
 
     componentDidMount() {
         this.props.enableTree();
-        this.handleRefreshSecurityLog();
+        this.refreshSecurityLog();
     }
 
     componentWillUnmount() {
@@ -53,16 +53,13 @@ export class SecurityLogMonitor extends React.Component {
 
     securityRefreshCont(e) {
         if (e.target.checked) {
-            this.setState({
-                securitylog_cont_refresh: setInterval(this.handleRefreshSecurityLog, 2000),
-                securityRefreshing: e.target.checked,
-            });
+            this.state.securitylog_cont_refresh = setInterval(this.refreshSecurityLog, 2000);
         } else {
             clearInterval(this.state.securitylog_cont_refresh);
-            this.setState({
-                securityRefreshing: e.target.checked,
-            });
         }
+        this.setState({
+            securityRefreshing: e.target.checked,
+        });
     }
 
     handleSecurityChange(e) {
@@ -71,10 +68,10 @@ export class SecurityLogMonitor extends React.Component {
             {
                 securityLines: value
             }
-        ), this.handleRefreshSecurityLog);
+        ), this.refreshSecurityLog);
     }
 
-    handleRefreshSecurityLog () {
+    refreshSecurityLog () {
         this.setState({
             securityReloading: true
         });
@@ -98,12 +95,11 @@ export class SecurityLogMonitor extends React.Component {
     render() {
         let spinner = "";
         if (this.state.securityReloading) {
-            spinner = (
+            spinner =
                 <div>
                     <Spinner isSVG size="sm" />
                     Reloading security log...
-                </div>
-            );
+                </div>;
         }
 
         return (
@@ -112,13 +108,12 @@ export class SecurityLogMonitor extends React.Component {
                     <GridItem span={3}>
                         <TextContent>
                             <Text component={TextVariants.h3}>
-                                Security Log
-                                <FontAwesomeIcon
+                                Security Log <FontAwesomeIcon
                                     size="lg"
                                     className="ds-left-margin ds-refresh"
                                     icon={faSyncAlt}
                                     title="Refresh security log"
-                                    onClick={this.handleRefreshSecurityLog}
+                                    onClick={this.refreshSecurityLog}
                                 />
                             </Text>
                         </TextContent>

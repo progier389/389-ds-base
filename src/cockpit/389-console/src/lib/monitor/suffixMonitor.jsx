@@ -158,7 +158,7 @@ export class SuffixMonitor extends React.Component {
                     let maxsize = config.attrs.maxentrycachesize[0];
                     let currsize = config.attrs.currententrycachesize[0];
                     let utilratio = Math.round((currsize / maxsize) * 100);
-                    if (utilratio === 0) {
+                    if (utilratio == 0) {
                         utilratio = 1;
                     }
                     entry_util_data.shift();
@@ -175,7 +175,7 @@ export class SuffixMonitor extends React.Component {
                     currsize = parseInt(config.attrs.currentdncachesize[0]);
                     maxsize = parseInt(config.attrs.maxdncachesize[0]);
                     utilratio = (currsize / maxsize) * 100;
-                    if (utilratio === 0) {
+                    if (utilratio == 0) {
                         utilratio = 1;
                     }
                     dn_util_data.shift();
@@ -188,8 +188,8 @@ export class SuffixMonitor extends React.Component {
                         entryUtilCacheList: entry_util_data,
                         dnCacheList: dn_data,
                         dnCacheUtilList: dn_util_data,
-                        count,
-                        utilCount
+                        count: count,
+                        utilCount: utilCount
                     });
                 })
                 .fail(() => {
@@ -198,9 +198,7 @@ export class SuffixMonitor extends React.Component {
     }
 
     startCacheRefresh() {
-        this.setState({
-            cache_refresh: setInterval(this.refreshSuffixCache, 2000)
-        });
+        this.state.cache_refresh = setInterval(this.refreshSuffixCache, 2000);
     }
 
     stopCacheRefresh() {
@@ -225,11 +223,11 @@ export class SuffixMonitor extends React.Component {
         let dnutilratio = 1;
         let suffixIcon = faTree;
 
-        if (this.props.dbtype === "subsuffix") {
+        if (this.props.dbtype == "subsuffix") {
             suffixIcon = faLeaf;
         }
 
-        let content = (
+        let content =
             <div className="ds-margin-top-xlg ds-center">
                 <TextContent>
                     <Text component={TextVariants.h3}>
@@ -237,8 +235,7 @@ export class SuffixMonitor extends React.Component {
                     </Text>
                 </TextContent>
                 <Spinner className="ds-margin-top-lg" size="xl" />
-            </div>
-        );
+            </div>;
 
         if (!this.state.loading) {
             // Entry cache
@@ -255,10 +252,10 @@ export class SuffixMonitor extends React.Component {
             dnutilratio = Math.round((dncachecurr / dncachemax) * 100);
 
             // Adjust ratios if needed
-            if (utilratio === 0) {
+            if (utilratio == 0) {
                 utilratio = 1;
             }
-            if (dnutilratio === 0) {
+            if (dnutilratio == 0) {
                 dnutilratio = 1;
             }
 
@@ -295,7 +292,7 @@ export class SuffixMonitor extends React.Component {
                 dnUtilChartColor = ChartThemeColor.green;
             }
 
-            content = (
+            content =
                 <div id="monitor-suffix-page">
                     <Tabs activeKey={this.state.activeTabKey} onSelect={this.handleNavSelect}>
                         <Tab eventKey={0} title={<TabTitleText>Entry Cache</TabTitleText>}>
@@ -596,8 +593,7 @@ export class SuffixMonitor extends React.Component {
                             </Grid>
                         </Tab>
                     </Tabs>
-                </div>
-            );
+                </div>;
         }
 
         return (

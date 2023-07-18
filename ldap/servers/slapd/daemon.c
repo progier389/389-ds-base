@@ -1119,7 +1119,7 @@ slapd_daemon(daemon_ports_t *ports)
     /* The meat of the operation is in a loop on a call to select */
     while (!g_get_shutdown()) {
 
-        usleep(500 * 1000);
+        usleep(1000);
     }
     /* We get here when the server is shutting down */
     /* Do what we have to do before death */
@@ -1211,7 +1211,6 @@ slapd_daemon(daemon_ports_t *ports)
     slapi_log_err(SLAPI_LOG_TRACE, "slapd_daemon",
                   "slapd shutting down - waiting for backends to close down\n");
 
-    pageresult_lock_cleanup();
     eq_stop(); /* deprecated */
     eq_stop_rel();
     if (!in_referral_mode) {

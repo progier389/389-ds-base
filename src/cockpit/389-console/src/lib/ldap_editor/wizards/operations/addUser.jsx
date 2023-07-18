@@ -2,7 +2,7 @@ import React from 'react';
 import {
     Alert,
     BadgeToggle,
-    Card, CardBody, CardTitle,
+    Card, CardHeader, CardBody, CardFooter, CardTitle,
     Dropdown, DropdownItem, DropdownPosition,
     Form,
     Grid, GridItem,
@@ -19,8 +19,13 @@ import {
     InfoCircleIcon,
 } from '@patternfly/react-icons';
 import {
-    Table, TableHeader, TableBody, TableVariant,
-    headerCol,
+    EditableTextCell,
+    EditableSelectInputCell,
+    Table, TableHeader, TableBody, TableVariant, headerCol,
+    applyCellEdits,
+    cancelCellEdits,
+    getErrorTextByValidator,
+    validateCellEdits,
 } from '@patternfly/react-table';
 import EditableTable from '../../lib/editableTable.jsx';
 import {
@@ -105,7 +110,7 @@ class AddUser extends React.Component {
             ],
             'Posix Account': [
                 'preferredDeliveryMethod', 'displayName', 'employeeNumber',
-                'preferredLanguage', 'userPassword', 'uidNumber', 'gidNumber',
+                'preferredLanguage', 'userPassword','uidNumber', 'gidNumber',
                 'homeDirectory', 'loginShell', 'gecos'
             ],
             'Service Account': [
@@ -164,7 +169,7 @@ class AddUser extends React.Component {
             isOpenType: false,
         };
 
-        this.handleNext = ({ id }) => {
+        this.onNext = ({ id }) => {
             this.setState({
                 stepIdReached: this.state.stepIdReached < id ? id : this.state.stepIdReached
             });
@@ -176,51 +181,50 @@ class AddUser extends React.Component {
                 this.generateLdifData();
             } else if (id === 6) {
                 // Create the LDAP entry.
-                const myLdifArray = this.state.ldifArray;
+                let myLdifArray = this.state.ldifArray;
                 createLdapEntry(this.props.editorLdapServer,
-                                myLdifArray,
-                                (result) => {
-                                    this.setState({
-                                        commandOutput: result.errorCode === 0 ? 'Successfully added user!' : 'Failed to add user, error: ' + result.errorCode,
-                                        resultVariant: result.errorCode === 0 ? 'success' : 'danger',
-                                        adding: false,
-                                    }, () => {
-                                        this.props.onReload();
-                                    });
-                                    // Update the wizard operation information.
-                                    const myDn = myLdifArray[0].substring(4);
-                                    const opInfo = {
-                                        operationType: 'ADD',
-                                        resultCode: result.errorCode,
-                                        time: Date.now(),
-                                        entryDn: myDn,
-                                        relativeDn: this.state.namingAttrVal
-                                    };
-                                    this.props.setWizardOperationInfo(opInfo);
-                                }
+                    myLdifArray,
+                    (result) => {
+                        this.setState({
+                            commandOutput: result.errorCode === 0 ? 'Successfully added user!' : 'Failed to add user, error: ' + result.errorCode ,
+                            resultVariant: result.errorCode === 0 ? 'success' : 'danger',
+                            adding: false,
+                        }, () => {
+                            this.props.onReload();
+                        });
+                        // Update the wizard operation information.
+                        const myDn = myLdifArray[0].substring(4);
+                        const opInfo = {
+                            operationType: 'ADD',
+                            resultCode: result.errorCode,
+                            time: Date.now(),
+                            entryDn: myDn,
+                            relativeDn: this.state.namingAttrVal
+                        }
+                        this.props.setWizardOperationInfo(opInfo);
+                    }
                 );
             }
         };
 
-        this.handleBack = ({ id }) => {
+        this.onBack = ({ id }) => {
             if (id === 4) {
                 // true ==> Do not check the attribute selection when navigating back.
                 this.updateValuesTableRows(true);
             }
         };
 
-        this.handleToggleType = isOpenType => {
+        this.onToggleType = isOpenType => {
             this.setState({
                 isOpenType
             });
-        };
-        this.handleSelectType = (event, selection) => {
-            const attributesArray = [];
+        }
+        this.onSelectType = (event, selection) => {
+            let attributesArray = [];
             let selectedAttrs = [];
 
             this.allowedAttrs[selection].map(attr => {
                 attributesArray.push({ cells: [attr] });
-                return [];
             });
             this.requiredAttrs[selection].map(attr => {
                 attributesArray.push({
@@ -229,7 +233,6 @@ class AddUser extends React.Component {
                     isAttributeSelected: true,
                     disableCheckbox: true
                 });
-                return [];
             });
             selectedAttrs = [...this.requiredAttrs[selection]];
 
@@ -245,9 +248,9 @@ class AddUser extends React.Component {
                 selectedAttributes: selectedAttrs,
                 isOpenType: false,
             });
-        };
+        }
 
-        this.handleAttrSearchChange = (value) => {
+        this.onAttrSearchChange = (value, event) => {
             let attrRows = [];
             let allAttrs = [];
             const val = value.toLowerCase();
@@ -272,18 +275,18 @@ class AddUser extends React.Component {
                 pagedRowsUser: attrRows.slice(0, this.state.perPageAttr),
                 itemCountAddUser: attrRows.length,
                 searchValue: value
-            });
-        };
+            })
+        }
+
 
         // End constructor().
     }
 
     componentDidMount () {
-        const attributesArray = [];
+        let attributesArray = [];
         // Set the default poisx user attributes
         this.allowedAttrs[this.state.accountType].map(attr => {
             attributesArray.push({ cells: [attr] });
-            return [];
         });
         this.requiredAttrs[this.state.accountType].map(attr => {
             attributesArray.push({
@@ -292,7 +295,6 @@ class AddUser extends React.Component {
                 isAttributeSelected: true,
                 disableCheckbox: true
             });
-            return [];
         });
 
         // Sort the attributes
@@ -307,14 +309,14 @@ class AddUser extends React.Component {
         });
     }
 
-    handleSetPageAddUser = (_event, pageNumber) => {
+    onSetPageAddUser = (_event, pageNumber) => {
         this.setState({
             pageAddUser: pageNumber,
             pagedRowsUser: this.getAttributesToShow(pageNumber, this.state.perPageAddUser)
         });
     };
 
-    handlePerPageSelectAddUser = (_event, perPage) => {
+    onPerPageSelectAddUser = (_event, perPage) => {
         this.setState({
             pageAddUser: 1,
             perPageAddUser: perPage,
@@ -335,41 +337,43 @@ class AddUser extends React.Component {
 
     isAttributeRequired = attr => {
         return this.requiredAttrs[this.state.accountType].includes(attr);
-    };
+    }
 
-    handleSelect = (event, isSelected, rowId) => {
+    onSelect = (event, isSelected, rowId) => {
+        let rows;
+
         // Quick hack until the code is upgraded to a version that supports "disableCheckbox"
         if (this.state.pagedRowsUser[rowId].disableCheckbox === true) {
             return;
         } // End hack.
 
         // Process only the entries in the current page ( pagedRowsUser )
-        const rows = [...this.state.pagedRowsUser];
+        rows = [...this.state.pagedRowsUser];
         rows[rowId].selected = isSelected;
         // Find the entry in the full array and set 'isAttributeSelected' accordingly
         // The property 'isAttributeSelected' is used to build the LDAP entry to add.
         // The row ID cannot be used since it changes with the pagination.
-        const attrName = rows[rowId].cells[0];
-        const allItems = [...this.state.rowsUser];
+        const attrName = this.state.pagedRowsUser[rowId].cells[0];
+        let allItems = [...this.state.rowsUser];
         const allAttrs = this.state.rowsOrig;
         const index = allItems.findIndex(item => item.cells[0] === attrName);
         allItems[index].isAttributeSelected = isSelected;
-        const selectedAttributes = allAttrs
-                .filter(item => item.isAttributeSelected)
-                .map(selectedAttr => selectedAttr.cells[0]);
+        let selectedAttributes = allAttrs
+            .filter(item => item.isAttributeSelected)
+            .map(selectedAttr => selectedAttr.cells[0]);
 
         this.setState({
             rowsUser: allItems,
             pagedRowsUser: rows,
             selectedAttributes
         },
-                      () => this.updateValuesTableRows());
+        () => this.updateValuesTableRows());
     };
 
     updateValuesTableRows = (skipAttributeSelection) => {
         const newSelectedAttrs = [...this.state.selectedAttributes];
         let namingRowID = this.state.namingRowID;
-        let namingAttrVal = this.state.namingAttrVal;
+        let namingAttrVal = this.state.namingAttrVal
         let editableTableData = [];
         let namingAttr = this.state.namingAttr;
         let namingVal = this.state.namingVal;
@@ -382,11 +386,11 @@ class AddUser extends React.Component {
                     val: '',
                     required: false,
                     namingAttr: false,
-                };
+                }
                 return obj;
             });
             editableTableData.sort((a, b) => (a.attr > b.attr) ? 1 : -1);
-            namingRowID = editableTableData[0].id;
+            namingRowID = editableTableData[0].id,
             namingAttrVal = editableTableData[0].attr + "=" + editableTableData[0].val;
             namingAttr = editableTableData[0].attr;
             namingVal = editableTableData[0].val;
@@ -394,7 +398,7 @@ class AddUser extends React.Component {
             if (skipAttributeSelection) { // Do not check the attribute selection ( because it has not changed ).
                 editableTableData = [...this.state.savedRows];
             } else {
-                const arrayOfAttrObjects = [...this.state.savedRows];
+                let arrayOfAttrObjects = [...this.state.savedRows];
                 for (const myAttr of newSelectedAttrs) {
                     const found = arrayOfAttrObjects.find(el => el.attr === myAttr);
                     if (found === undefined) {
@@ -410,16 +414,16 @@ class AddUser extends React.Component {
                 }
                 // Remove the newly unselected attribute(s).
                 editableTableData = arrayOfAttrObjects
-                        .filter(datum => {
-                            const attrName = datum.attr;
-                            const found = newSelectedAttrs.find(attr => attr === attrName);
-                            return (found !== undefined);
-                        });
+                    .filter(datum => {
+                        const attrName = datum.attr;
+                        const found = newSelectedAttrs.find(attr => attr === attrName);
+                        return (found !== undefined);
+                    });
 
                 // Sort the rows
                 editableTableData.sort((a, b) => (a.attr > b.attr) ? 1 : -1);
                 if (this.state.namingRowID === -1) {
-                    namingRowID = editableTableData[0].id;
+                    namingRowID = editableTableData[0].id
                 }
             }
         }
@@ -446,7 +450,7 @@ class AddUser extends React.Component {
         let rows = this.state.savedRows;
 
         if (rows.length === 0) {
-            rows = this.state.editableTableData;
+            rows = this.state.editableTableData
         }
         for (const row of rows) {
             if (row.id === namingRowID) {
@@ -465,13 +469,13 @@ class AddUser extends React.Component {
         });
     };
 
-    handleAttrDropDownToggle = isOpen => {
+    onAttrDropDownToggle = isOpen => {
         this.setState({
             isAttrDropDownOpen: isOpen
         });
     };
 
-    handleAttrDropDownSelect = event => {
+    onAttrDropDownSelect = event => {
         this.setState((prevState, props) => {
             return { isAttrDropDownOpen: !prevState.isAttrDropDownOpen };
         });
@@ -487,10 +491,10 @@ class AddUser extends React.Component {
         return (
             <Dropdown
                 className="ds-dropdown-padding"
-                onSelect={this.handleAttrDropDownSelect}
+                onSelect={this.onAttrDropDownSelect}
                 position={DropdownPosition.left}
                 toggle={
-                    <BadgeToggle id="toggle-attr-select" onToggle={this.handleAttrDropDownToggle}>
+                    <BadgeToggle id="toggle-attr-select" onToggle={this.onAttrDropDownToggle}>
                         {numSelected !== 0 ? <>{numSelected} selected </> : <>0 selected </>}
                     </BadgeToggle>
                 }
@@ -498,24 +502,23 @@ class AddUser extends React.Component {
                 dropdownItems={items}
             />
         );
-    };
+    }
 
     saveCurrentRows = (savedRows, namingID) => {
-        this.setState({
-            savedRows
-        }, () => {
-            // Update the naming information after the new rows have been saved.
-            if (namingID !== -1) { // The namingIndex is set to -1 if the row is not the naming one.
-                this.setNamingRowID(namingID);
-            }
-        });
-    };
+        this.setState({ savedRows },
+            () => {
+                // Update the naming information after the new rows have been saved.
+                if (namingID != -1) { // The namingIndex is set to -1 if the row is not the naming one.
+                    this.setNamingRowID(namingID);
+                }
+            });
+    }
 
     generateLdifData = () => {
-        const ldifArray = [];
+        let ldifArray = [];
         let isFilePath = false;
-        const objectClassData = this.userObjectclasses[this.state.accountType];
-        const cleanLdifArray = [];
+        let objectClassData = this.userObjectclasses[this.state.accountType];
+        let cleanLdifArray = [];
 
         ldifArray.push(`dn: ${this.state.namingAttrVal},${this.props.wizardEntryDn}`);
         ldifArray.push(...objectClassData);
@@ -539,14 +542,12 @@ class AddUser extends React.Component {
             if (attrName.toLowerCase().startsWith("userpassword")) {
                 cleanLdifArray.push("userpassword: ********");
             } else if (attrName.toLowerCase().startsWith("jpegphoto") && mySeparator === '::') {
-                const myTruncatedValue = (
-                    <div>
-                        {"jpegphoto:: "}
-                        <Label icon={<InfoCircleIcon />} color="blue">
-                            Value is too large to display
-                        </Label>
-                    </div>
-                );
+                const myTruncatedValue = (<div>
+                                              {"jpegphoto:: "}
+                                              <Label icon={<InfoCircleIcon />} color="blue" >
+                                                  Value is too large to display
+                                              </Label>
+                                          </div>);
                 cleanLdifArray.push(myTruncatedValue);
             } else {
                 cleanLdifArray.push(...remainingData);
@@ -554,14 +555,15 @@ class AddUser extends React.Component {
         }
 
         this.setState({ ldifArray, cleanLdifArray });
-    };
+    }
 
     render () {
         const {
-            commandOutput, itemCountAddUser, pageAddUser, perPageAddUser,
-            columnsUser, pagedRowsUser, ldifArray, cleanLdifArray, noEmptyValue,
-            namingAttrVal, namingAttr, namingVal, resultVariant,
-            editableTableData, stepIdReached
+            commandOutput,
+            itemCountAddUser, pageAddUser, perPageAddUser, columnsUser, pagedRowsUser,
+            ldifArray, cleanLdifArray, columnsValues, noEmptyValue, alertVariant,
+            namingAttrVal, namingAttr, namingVal, resultVariant, editableTableData,
+            stepIdReached
         } = this.state;
 
         const rdnValue = namingVal;
@@ -577,14 +579,15 @@ class AddUser extends React.Component {
                             Select Entry Type
                         </Text>
                     </TextContent>
+
                 </div>
                 <div className="ds-indent">
                     <Select
                         variant={SelectVariant.single}
                         className="ds-margin-top-lg"
                         aria-label="Select user type"
-                        onToggle={this.handleToggleType}
-                        onSelect={this.handleSelectType}
+                        onToggle={this.onToggleType}
+                        onSelect={this.onSelectType}
                         selections={this.state.accountType}
                         isOpen={this.state.isOpenType}
                     >
@@ -601,8 +604,8 @@ class AddUser extends React.Component {
                             <b>Posix Account</b> - This type of user entry uses a
                             similar set of objectclasses as the <i>Basic Account</i> (nsPerson,
                             nsAccount, nsOrgPerson, and posixAccount), but it includes
-                            POSIX attributes like:
-                            <i>uidNumber, gidNumber, homeDirectory, loginShell, and gecos</i>.
+                            POSIX attributes like: <i>uidNumber, gidNumber, homeDirectory,
+                            loginShell, and gecos</i>.
                         </Text>
                         <Text component={TextVariants.h6} className="ds-margin-top-lg ds-font-size-md">
                             <b>Service Account</b> - This type of entry uses a
@@ -631,8 +634,8 @@ class AddUser extends React.Component {
                             className="ds-font-size-md"
                             placeholder='Search Attributes'
                             value={this.state.searchValue}
-                            onChange={(evt, val) => this.handleAttrSearchChange(val)}
-                            onClear={() => this.handleAttrSearchChange('')}
+                            onChange={this.onAttrSearchChange}
+                            onClear={(evt) => this.onAttrSearchChange('', evt)}
                         />
                     </GridItem>
                     <GridItem span={7}>
@@ -640,9 +643,9 @@ class AddUser extends React.Component {
                             itemCount={itemCountAddUser}
                             page={pageAddUser}
                             perPage={perPageAddUser}
-                            onSetPage={this.handleSetPageAddUser}
+                            onSetPage={this.onSetPageAddUser}
                             widgetId="pagination-options-menu-add-user"
-                            onPerPageSelect={this.handlePerPageSelectAddUser}
+                            onPerPageSelect={this.onPerPageSelectAddUser}
                             isCompact
                         />
                     </GridItem>
@@ -650,7 +653,7 @@ class AddUser extends React.Component {
                 <Table
                     cells={columnsUser}
                     rows={pagedRowsUser}
-                    onSelect={this.handleSelect}
+                    onSelect={this.onSelect}
                     variant={TableVariant.compact}
                     aria-label="Pagination User Attributes"
                     canSelectAll={false}
@@ -662,7 +665,7 @@ class AddUser extends React.Component {
         );
 
         const userValuesStep = (
-            <>
+            <React.Fragment>
                 <Form autoComplete="off">
                     <Grid>
                         <GridItem className="ds-margin-top" span={12}>
@@ -673,7 +676,7 @@ class AddUser extends React.Component {
                                 isInline
                                 title={myTitle}
                             >
-                                <b>Entry DN:&nbsp;&nbsp;&nbsp;</b>{(namingAttr || "??????")}={namingVal || "??????"},{this.props.wizardEntryDn}
+                                <b>Entry DN:&nbsp;&nbsp;&nbsp;</b>{(namingAttr ? namingAttr : "??????")}={namingVal ? namingVal : "??????"},{this.props.wizardEntryDn}
                             </Alert>
                         </GridItem>
                         <GridItem span={12} className="ds-margin-top-xlg">
@@ -698,7 +701,7 @@ class AddUser extends React.Component {
                         namingAttr={this.state.namingAttr}
                     />
                 </GridItem>
-            </>
+            </React.Fragment>
         );
 
         const ldifListItems = cleanLdifArray.map((line, index) =>
@@ -719,7 +722,8 @@ class AddUser extends React.Component {
                         { (ldifListItems.length > 0) &&
                             <SimpleList aria-label="LDIF data User">
                                 {ldifListItems}
-                            </SimpleList>}
+                            </SimpleList>
+                        }
                     </CardBody>
                 </Card>
             </div>
@@ -729,7 +733,7 @@ class AddUser extends React.Component {
         const ldifLines = ldifArray.map(line => {
             nb++;
             return { data: line, id: nb };
-        });
+        })
         const userReviewStep = (
             <div>
                 <Alert
@@ -742,7 +746,8 @@ class AddUser extends React.Component {
                         <div>
                             <Spinner className="ds-left-margin" size="md" />
                             &nbsp;&nbsp;Adding user ...
-                        </div>}
+                        </div>
+                    }
                 </Alert>
                 {resultVariant === 'danger' &&
                     <Card isSelectable>
@@ -754,7 +759,8 @@ class AddUser extends React.Component {
                                 <h6 key={line.id}>{line.data}</h6>
                             ))}
                         </CardBody>
-                    </Card>}
+                    </Card>
+                }
             </div>
         );
 
@@ -803,18 +809,16 @@ class AddUser extends React.Component {
             }
         ];
 
-        const title = (
-            <>
-                Parent DN: &nbsp;&nbsp;<strong>{this.props.wizardEntryDn}</strong>
-            </>
-        );
+        const title = <>
+            Parent DN: &nbsp;&nbsp;<strong>{this.props.wizardEntryDn}</strong>
+        </>;
 
         return (
             <Wizard
                 isOpen={this.props.isWizardOpen}
-                onClose={this.props.handleToggleWizard}
-                onNext={this.handleNext}
-                onBack={this.handleBack}
+                onClose={this.props.toggleOpenWizard}
+                onNext={this.onNext}
+                onBack={this.onBack}
                 title="Add A User"
                 description={title}
                 steps={addUserSteps}

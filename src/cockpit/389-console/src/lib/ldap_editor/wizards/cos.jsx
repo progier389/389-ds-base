@@ -6,7 +6,11 @@ import {
     Text,
     TextContent,
     TextVariants,
-} from '@patternfly/react-core';
+    Tooltip
+}   from '@patternfly/react-core';
+import {
+    InfoCircleIcon
+} from '@patternfly/react-icons';
 import AddCosDefinition from './operations/addCosDefinition.jsx';
 import AddCosTemplate from './operations/addCosTemplate.jsx';
 
@@ -25,7 +29,7 @@ class CoSEntryWizard extends React.Component {
         this.setState({ getStartedStepRadio: event.currentTarget.value });
     };
 
-    createInitialLayout = () => {
+    createInitialLayout=() => {
         // Creation of a CoS entry
         return ([
             {
@@ -78,8 +82,8 @@ class CoSEntryWizard extends React.Component {
                     </div>
                 )
             }
-        ]);
-    };
+        ])
+    }
 
     render () {
         const {
@@ -90,7 +94,7 @@ class CoSEntryWizard extends React.Component {
 
         const wizardProps = {
             isWizardOpen: this.props.isWizardOpen,
-            handleToggleWizard: this.props.handleToggleWizard,
+            toggleOpenWizard: this.props.toggleOpenWizard,
             wizardEntryDn: this.props.wizardEntryDn,
             editorLdapServer: this.props.editorLdapServer,
             setWizardOperationInfo: this.props.setWizardOperationInfo,
@@ -99,28 +103,24 @@ class CoSEntryWizard extends React.Component {
         };
 
         if (getStartedStepRadio === 'CoSDefinition') {
-            return (
-                <AddCosDefinition
-                    {...wizardProps}
-                    allObjectclasses={this.props.allObjectclasses}
-                    treeViewRootSuffixes={this.props.treeViewRootSuffixes}
-                    createdTemplateDN=""
-                    stepReached={1}
-                    cosDefName=""
-                    cosDefDesc=""
-                    cosDefType="pointer"
-                />
-            );
+            return <AddCosDefinition
+                {...wizardProps}
+                allObjectclasses={this.props.allObjectclasses}
+                treeViewRootSuffixes={this.props.treeViewRootSuffixes}
+                createdTemplateDN=""
+                stepReached={1}
+                cosDefName=""
+                cosDefDesc=""
+                cosDefType="pointer"
+            />
         } else if (getStartedStepRadio === 'CoSTemplate') {
-            return (
-                <AddCosTemplate
-                    {...wizardProps}
-                    allObjectclasses={this.props.allObjectclasses}
-                    treeViewRootSuffixes={this.props.treeViewRootSuffixes}
-                    definitionWizardEntryDn=""
-                    stepReached={1}
-                />
-            );
+            return <AddCosTemplate
+                {...wizardProps}
+                allObjectclasses={this.props.allObjectclasses}
+                treeViewRootSuffixes={this.props.treeViewRootSuffixes}
+                definitionWizardEntryDn=""
+                stepReached={1}
+            />
         }
     }
 }

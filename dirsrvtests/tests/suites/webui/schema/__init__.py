@@ -1,3 +1,0 @@
-"""
-   :Requirement: WebUI: Schema
-"""

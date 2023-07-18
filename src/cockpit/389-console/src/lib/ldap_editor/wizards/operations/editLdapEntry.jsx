@@ -3,7 +3,7 @@ import {
     Alert,
     BadgeToggle,
     Bullseye,
-    Card, CardBody, CardTitle,
+    Card, CardHeader, CardBody, CardTitle,
     Dropdown, DropdownItem, DropdownPosition,
     Grid, GridItem,
     Label, LabelGroup,
@@ -37,6 +37,7 @@ import EditGroup from './editGroup.jsx';
 import {
     LDAP_OPERATIONS,
     BINARY_ATTRIBUTES,
+    LDIF_MAX_CHAR_PER_LINE
 } from '../../lib/constants.jsx';
 
 class EditLdapEntry extends React.Component {
@@ -96,12 +97,12 @@ class EditLdapEntry extends React.Component {
             isGroupOfUniqueNames: false,
             groupMembers: [],
             groupGenericEditor: false,
-            localProps: { ...this.props },
+            localProps: {...this.props},
             searchOCValue: "",
             searchValue: "",
         };
 
-        this.handleNext = ({ id }) => {
+        this.onNext = ({ id }) => {
             this.setState({
                 stepIdReached: this.state.stepIdReached < id ? id : this.state.stepIdReached
             });
@@ -121,10 +122,11 @@ class EditLdapEntry extends React.Component {
                 const params = { serverId: this.state.localProps.editorLdapServer };
                 modifyLdapEntry(params, this.state.ldifArray, (result) => {
                     if (result.errorCode === 0) {
-                        result.output = "Successfully modified entry";
+                        result.output = "Successfully modified entry"
                     }
                     this.setState({
-                        commandOutput: result.errorCode === 0 ? 'Successfully modified entry!' : 'Failed to modify entry, error: ' + result.errorCode,
+                        commandOutput: result.output,
+                        commandOutput: result.errorCode === 0 ? 'Successfully modified entry!' : 'Failed to modify entry, error: ' + result.errorCode ,
                         resultVariant: result.errorCode === 0 ? 'success' : 'danger',
                         modifying: false,
                     }, () => { this.state.localProps.onReload() }); // refreshes tableView
@@ -132,14 +134,14 @@ class EditLdapEntry extends React.Component {
                         operationType: 'MODIFY',
                         resultCode: result.errorCode,
                         time: Date.now()
-                    };
+                    }
                     this.state.localProps.setWizardOperationInfo(opInfo);
                 });
             }
         };
 
         this.cleanUpEntry = () => {
-            const newRows = [];
+            let newRows = [];
             let validMods = true;
             for (const row of this.state.editableTableData) {
                 const attr = row.attr.toLowerCase();
@@ -155,11 +157,11 @@ class EditLdapEntry extends React.Component {
                 editableTableData: newRows,
                 validMods,
             });
-        };
+        }
 
-        this.handleOCSearchChange = (event, value) => {
+        this.onOCSearchChange = (value, event) => {
             let ocRows = [];
-            const allOCs = [];
+            let allOCs = [];
             const val = value.toLowerCase();
 
             // Get fresh list of Objectclasses and what is selected
@@ -183,10 +185,9 @@ class EditLdapEntry extends React.Component {
                             oc.required.join(', '),
                             oc.optional.join(', '),
                         ],
-                        selected,
+                        selected: selected,
                         disableSelection: selectionDisabled
                     });
-                return [];
             });
 
             // Process search filter on the entire list
@@ -209,10 +210,10 @@ class EditLdapEntry extends React.Component {
                 pagedRowsOc: ocRows.slice(0, this.state.perPageOc),
                 itemCountOc: ocRows.length,
                 searchOCValue: value
-            });
-        };
+            })
+        }
 
-        this.handleAttrSearchChange = (event, value) => {
+        this.onAttrSearchChange = (value, event) => {
             let attrRows = [];
             let allAttrs = [];
             const val = value.toLowerCase();
@@ -238,11 +239,11 @@ class EditLdapEntry extends React.Component {
                 pagedRowsAttr: attrRows.slice(0, this.state.perPageAttr),
                 itemCountAttr: attrRows.length,
                 searchValue: value,
-            });
-        };
+            })
+        }
 
         this.useGroupGenericEditor = this.useGroupGenericEditor.bind(this);
-        this.handleLoadEntry = this.handleLoadEntry.bind(this);
+        this.loadEntry = this.loadEntry.bind(this);
         // End constructor().
     }
 
@@ -251,18 +252,18 @@ class EditLdapEntry extends React.Component {
         this.setState({
             groupGenericEditor: true
         });
-    };
+    }
 
     openEditEntry = (dn) => {
         // used by group modal
-        const editProps = { ...this.state.localProps };
+        let editProps = { ...this.state.localProps};
         editProps.wizardEntryDn = dn;
         this.setState({
             localProps: editProps,
             isGroupOfNames: false,
             isGroupOfUniqueNames: false,
-        });
-    };
+        })
+    }
 
     isAttributeSingleValued = (attr) => {
         return this.singleValuedAttributes.includes(attr.toLowerCase());
@@ -270,7 +271,7 @@ class EditLdapEntry extends React.Component {
 
     isAttributeRequired = attr => {
         return this.requiredAttributes.includes(attr);
-    };
+    }
 
     enableNextStep = (yes) => {
         this.setState({
@@ -291,193 +292,191 @@ class EditLdapEntry extends React.Component {
             editableTableData,
             validMods
         });
-    };
+    }
 
-    handleLoadEntry(reload) {
+    loadEntry(reload) {
         const ocArray = [];
         if (reload) {
             this.originalEntryRows = [];
         }
 
         getBaseLevelEntryAttributes(this.state.localProps.editorLdapServer,
-                                    this.state.localProps.wizardEntryDn,
-                                    (entryDetails) => {
-                                        const objectclasses = [];
-                                        const rdnInfo = getRdnInfo(this.state.localProps.wizardEntryDn);
-                                        let namingAttr = "";
-                                        let namingValue = "";
-                                        let isGroupOfUniqueNames = false;
-                                        let isGroupOfNames = false;
-                                        const members = [];
+            this.state.localProps.wizardEntryDn,
+            (entryDetails) => {
+                let objectclasses = [];
+                const rdnInfo = getRdnInfo(this.state.localProps.wizardEntryDn);
+                let namingAttr = "";
+                let namingValue = "";
+                let namingIndex = -1;
+                let attrPropsName = "";
+                let isGroupOfUniqueNames = false;
+                let isGroupOfNames = false;
+                let members = [];
 
-                                        entryDetails
-                                                .filter(data => (data.attribute + data.value !== '' && // Filter out empty lines
-                                                        data.attribute !== '???: ')) // and data for empty suffix(es) and in case of failure.
-                                                .map((line, index) => {
-                                                    let attrLowerCase;
-                                                    let namingAttribute = false;
-                                                    if (line.attribute !== undefined) {
-                                                        const obj = {};
-                                                        const attr = line.attribute;
-                                                        attrLowerCase = attr.trim().toLowerCase();
-                                                        let val = line.value.substring(1).trim();
-                                                        let encodedvalue = "";
+                entryDetails
+                .filter(data => (data.attribute + data.value !== '' && // Filter out empty lines
+                data.attribute !== '???: ')) // and data for empty suffix(es) and in case of failure.
+                .map((line, index) => {
+                    let attrLowerCase;
+                    let namingAttribute = false;
+                    if (line.attribute !== undefined) {
+                        const obj = {};
+                        const attr = line.attribute;
+                        attrLowerCase = attr.trim().toLowerCase();
+                        let val = line.value.substring(1).trim();
+                        let encodedvalue = "";
 
-                                                        if (attrLowerCase === "objectclass") {
-                                                            objectclasses.push(val);
-                                                            if (val.toLowerCase() === "groupofnames") {
-                                                                isGroupOfNames = true;
-                                                            } else if (val.toLowerCase() === "groupofuniquenames") {
-                                                                isGroupOfUniqueNames = true;
-                                                            }
-                                                        } else {
-                                                            // Base64 encoded values
-                                                            if (line.attribute === "dn") {
-                                                                // return;
-                                                            }
-                                                            if (line.value.substring(0, 2) === '::') {
-                                                                val = line.value.substring(3);
-                                                                if (BINARY_ATTRIBUTES.includes(attrLowerCase)) {
-                                                                    // obj.fileUpload = true;
-                                                                    // obj.isDisabled = true;
-                                                                    if (attrLowerCase === 'jpegphoto') {
-                                                                        const myPhoto = (
-                                                                            <img
-                                                                                src={`data:image/png;base64,${val}`}
-                                                                                alt=""
-                                                                                style={{ width: '48px' }}
-                                                                            />
-                                                                        );
-                                                                        encodedvalue = val;
-                                                                        val = myPhoto;
-                                                                    } else if (attrLowerCase === 'nssymmetrickey') {
-                                                                        // TODO: Check why the decoding of 'nssymmetrickey is failing...
-                                                                        //   https://access.redhat.com/documentation/en-us/red_hat_directory_server/10
-                                                                        //   /html/configuration_command_and_file_reference/core_server_configuration_reference#cnchangelog5-nsSymmetricKey
-                                                                        //
-                                                                        // Just show the encoded value at the moment.
-                                                                        val = line.value.substring(3);
-                                                                    }
-                                                                } else { // The value likely contains accented characters or has a trailing space.
-                                                                    val = b64DecodeUnicode(line.value.substring(3));
-                                                                }
-                                                            } else {
-                                                                // Check for naming attribute
-                                                                if (attr === rdnInfo.rdnAttr && val === rdnInfo.rdnVal) {
-                                                                    namingAttribute = true;
-                                                                    namingAttr = attr;
-                                                                    namingValue = val;
-                                                                }
-                                                            }
+                        if (attrLowerCase === "objectclass") {
+                            objectclasses.push(val);
+                            if (val.toLowerCase() === "groupofnames") {
+                                isGroupOfNames = true;
+                            } else if (val.toLowerCase() === "groupofuniquenames") {
+                                isGroupOfUniqueNames = true;
+                            }
+                        } else {
+                            // Base64 encoded values
+                            if (line.attribute === "dn") {
+                                //return;
+                            }
+                            if (line.value.substring(0, 2) === '::') {
+                                val = line.value.substring(3);
+                                if (BINARY_ATTRIBUTES.includes(attrLowerCase)) {
+                                    // obj.fileUpload = true;
+                                    // obj.isDisabled = true;
+                                    if (attrLowerCase === 'jpegphoto') {
+                                        const myPhoto = (<img
+                                            src={`data:image/png;base64,${val}`}
+                                            alt=""
+                                            style={{ width: '48px' }} // height will adjust automatically.
+                                            />);
+                                        encodedvalue = val;
+                                        val = myPhoto;
+                                    } else if (attrLowerCase === 'nssymmetrickey') {
+                                        // TODO: Check why the decoding of 'nssymmetrickey is failing...
+                                        //   https://access.redhat.com/documentation/en-us/red_hat_directory_server/10
+                                        //   /html/configuration_command_and_file_reference/core_server_configuration_reference#cnchangelog5-nsSymmetricKey
+                                        //
+                                        // Just show the encoded value at the moment.
+                                        val = line.value.substring(3);
+                                    }
+                                } else { // The value likely contains accented characters or has a trailing space.
+                                    val = b64DecodeUnicode(line.value.substring(3));
+                                }
+                            } else {
+                                // Check for naming attribute
+                                if (attr === rdnInfo.rdnAttr && val === rdnInfo.rdnVal) {
+                                    namingAttribute = true;
+                                    namingAttr = attr;
+                                    namingValue = val;
+                                }
+                            }
 
-                                                            obj.id = generateUniqueId();
-                                                            obj.attr = attr;
-                                                            obj.val = val;
-                                                            obj.encodedvalue = encodedvalue;
-                                                            obj.namingAttr = namingAttribute;
-                                                            obj.required = namingAttribute;
-                                                            this.originalEntryRows.push(obj);
-                                                        }
-                                                        // Handle group members separately
-                                                        if (attrLowerCase === "member" || attrLowerCase === "uniquemember") {
-                                                            members.push(val);
-                                                        }
-                                                    } else {
-                                                        // Value too large Label
-                                                        const obj = {};
-                                                        obj.id = generateUniqueId();
-                                                        obj.attr = line.props.attr;
-                                                        obj.val = line;
-                                                        obj.encodedvalue = "";
-                                                        obj.namingAttr = false;
-                                                        obj.required = false;
-                                                        attrLowerCase = line.props.attr.trim().toLowerCase();
-                                                        this.originalEntryRows.push(obj);
-                                                    }
-                                                    return [];
-                                                });
+                            obj.id = generateUniqueId();
+                            obj.attr = attr;
+                            obj.val = val;
+                            obj.encodedvalue = encodedvalue;
+                            obj.namingAttr = namingAttribute;
+                            obj.required = namingAttribute;
+                            this.originalEntryRows.push(obj);
+                        }
+                        // Handle group members separately
+                        if (attrLowerCase === "member" || attrLowerCase === "uniquemember") {
+                            members.push(val);
+                        }
+                    } else {
+                        // Value too large Label
+                        const obj = {};
+                        obj.id = generateUniqueId();
+                        obj.attr = line.props.attr;
+                        obj.val = line;
+                        obj.encodedvalue = "";
+                        obj.namingAttr = false;
+                        obj.required = false;
+                        attrLowerCase = line.props.attr.trim().toLowerCase();
+                        this.originalEntryRows.push(obj);
+                    }
+                });
 
-                                        // Mark the existing objectclass classes as selected
-                                        this.state.localProps.allObjectclasses.map(oc => {
-                                            let selected = false;
-                                            let selectionDisabled = false;
-                                            for (const entryOC of objectclasses) {
-                                                if (entryOC.toLowerCase() === oc.name.toLowerCase()) {
-                                                    // Mark required attributes with selected OC's
-                                                    for (const row of this.originalEntryRows) {
-                                                        if (oc.required.includes(row.attr) || row.attr === "dn") {
-                                                            row.required = true;
-                                                        }
-                                                    }
-                                                    selected = true;
-                                                    break;
-                                                }
-                                            }
-                                            if (oc.name === "top") {
-                                                // Can not remove objectclass=top
-                                                selectionDisabled = true;
-                                            }
-                                            ocArray.push(
-                                                {
-                                                    cells: [
-                                                        oc.name,
-                                                        oc.required.join(', '),
-                                                        oc.optional.join(', '),
-                                                    ],
-                                                    selected,
-                                                    disableSelection: selectionDisabled
-                                                });
-                                            return [];
-                                        });
-                                        const selectedObjectClasses = ocArray
-                                                .filter(item => item.selected);
+                // Mark the existing objectclass classes as selected
+                this.state.localProps.allObjectclasses.map(oc => {
+                    let selected = false;
+                    let selectionDisabled = false;
+                    for (const entryOC of objectclasses) {
+                        if (entryOC.toLowerCase() === oc.name.toLowerCase()) {
+                            // Mark required attributes with selected OC's
+                            for (let row of this.originalEntryRows) {
+                                if (oc.required.includes(row.attr) || row.attr === "dn") {
+                                    row.required = true;
+                                }
+                            }
+                            selected = true;
+                            break;
+                        }
+                    }
+                    if (oc.name === "top") {
+                        // Can not remove objectclass=top
+                        selectionDisabled = true;
+                    }
+                    ocArray.push(
+                        {
+                            cells: [
+                                oc.name,
+                                oc.required.join(', '),
+                                oc.optional.join(', '),
+                            ],
+                            selected: selected,
+                            disableSelection: selectionDisabled
+                        });
+                });
+                const selectedObjectClasses = ocArray
+                    .filter(item => item.selected);
 
-                                        this.setState({
-                                            itemCountOc: ocArray.length,
-                                            rowsOc: ocArray,
-                                            pagedRowsOc: ocArray.slice(0, this.state.perPageOc),
-                                            selectedObjectClasses,
-                                            editableTableData: [...this.originalEntryRows],
-                                            objectclasses,
-                                            namingAttribute: namingAttr,
-                                            namingValue,
-                                            origAttrs: JSON.parse(JSON.stringify(this.originalEntryRows)),
-                                            origOC: JSON.parse(JSON.stringify(selectedObjectClasses)),
-                                            isGroupOfNames,
-                                            isGroupOfUniqueNames,
-                                            groupMembers: members.sort(),
-                                            loading: false,
-                                        }, () => {
-                                            this.updateAttributeTableRows();
-                                        });
-                                    });
+                this.setState({
+                    itemCountOc: ocArray.length,
+                    rowsOc: ocArray,
+                    pagedRowsOc: ocArray.slice(0, this.state.perPageOc),
+                    selectedObjectClasses,
+                    editableTableData: [...this.originalEntryRows],
+                    objectclasses: objectclasses,
+                    namingAttribute: namingAttr,
+                    namingValue: namingValue,
+                    origAttrs: JSON.parse(JSON.stringify(this.originalEntryRows)),
+                    origOC: JSON.parse(JSON.stringify(selectedObjectClasses)),
+                    isGroupOfNames: isGroupOfNames,
+                    isGroupOfUniqueNames: isGroupOfUniqueNames,
+                    groupMembers: members.sort(),
+                    loading: false,
+                }, () => {
+                    this.updateAttributeTableRows();
+                });
+        });
     }
 
     componentDidMount () {
         getSingleValuedAttributes(this.props.editorLdapServer,
-                                  (myAttrs) => {
-                                      this.singleValuedAttributes = [...myAttrs];
-                                  });
+            (myAttrs) => {
+                this.singleValuedAttributes = [...myAttrs];
+        });
         this.setState({
-            localProps:  { ...this.props }
-        }, () => { this.handleLoadEntry() });
+            localProps:  {...this.props}
+        }, () => { this.loadEntry() });
     }
 
-    handleSetPageOc = (_event, pageNumber) => {
+    onSetPageOc = (_event, pageNumber) => {
         this.setState({
             pageOc: pageNumber,
             pagedRowsOc: this.getItemsToShow(pageNumber, this.state.perPageOc, 'ObjectClassTable')
         });
     };
 
-    handleSetPageAttr = (_event, pageNumber) => {
+    onSetPageAttr = (_event, pageNumber) => {
         this.setState({
             pageAttr: pageNumber,
             pagedRowsAttr: this.getItemsToShow(pageNumber, this.state.perPageAttr, 'AttributeTable')
         });
     };
 
-    handlePerPageSelectOc = (_event, perPage) => {
+    onPerPageSelectOc = (_event, perPage) => {
         this.setState({
             pageOc: 1,
             perPageOc: perPage,
@@ -485,7 +484,7 @@ class EditLdapEntry extends React.Component {
         });
     };
 
-    handlePerPageSelectAttr = (_event, perPage) => {
+    onPerPageSelectAttr = (_event, perPage) => {
         this.setState({
             pageAttr: 1,
             perPageAttr: perPage,
@@ -504,7 +503,7 @@ class EditLdapEntry extends React.Component {
         return newRows;
     }
 
-    handleSelectOc = (event, isSelected, rowId) => {
+    onSelectOc = (event, isSelected, rowId) => {
         // Process only the entries in the current page ( pagedRowsOc )
         const rows = [...this.state.pagedRowsOc];
         rows[rowId].selected = isSelected;
@@ -525,20 +524,16 @@ class EditLdapEntry extends React.Component {
             selectedObjectClasses = selectedObjectClasses.filter(row => (row.cells[0] !== allItems[index].cells[0]));
         }
 
-        const attrsToRemove = [];
+        let attrsToRemove = [];
         if (!isSelected) {
             // Removing an objectclass, this will impact the entry as we might have to remove attributes
-            let ocAttrs = allItems[index].cells[1].toLowerCase().replace(/\s/g, '')
-                    .split(',');
-            ocAttrs = ocAttrs.concat(allItems[index].cells[2].toLowerCase().replace(/\s/g, '')
-                    .split(','));
+            let ocAttrs = allItems[index].cells[1].toLowerCase().replace(/\s/g, '').split(',');
+            ocAttrs = ocAttrs.concat(allItems[index].cells[2].toLowerCase().replace(/\s/g, '').split(','));
             let currAttrs = [];
             for (const oc of selectedObjectClasses) {
                 // Gather all the allowed attributes
-                currAttrs = currAttrs.concat(oc.cells[1].toLowerCase().replace(/\s/g, '')
-                        .split(','));
-                currAttrs = currAttrs.concat(oc.cells[2].toLowerCase().replace(/\s/g, '')
-                        .split(','));
+                currAttrs = currAttrs.concat(oc.cells[1].toLowerCase().replace(/\s/g, '').split(','));
+                currAttrs = currAttrs.concat(oc.cells[2].toLowerCase().replace(/\s/g, '').split(','));
             }
 
             for (const attr of ocAttrs) {
@@ -559,8 +554,9 @@ class EditLdapEntry extends React.Component {
         });
     };
 
-    handleSelectAttr = (event, isSelected, rowId) => {
+    onSelectAttr = (event, isSelected, rowId) => {
         let newEditableData = this.state.editableTableData;
+        let rows;
 
         // Quick hack until the code is upgraded to a version that supports "disableCheckbox"
         if (this.state.pagedRowsAttr[rowId].disableCheckbox === true) {
@@ -568,20 +564,21 @@ class EditLdapEntry extends React.Component {
         } // End hack.
 
         // Process only the entries in the current page ( pagedRowsAttr )
-        const rows = [...this.state.pagedRowsAttr];
+        rows = [...this.state.pagedRowsAttr];
         rows[rowId].selected = isSelected;
 
         // Find the entry in the full array and set 'isAttributeSelected' accordingly
         // The property 'isAttributeSelected' is used to build the LDAP entry to add.
         // The row ID cannot be used since it changes with the pagination.
-        const attrName = rows[rowId].attributeName;
+        const attrName = this.state.pagedRowsAttr[rowId].attributeName;
         const allItems = [...this.state.rowsAttr];
         const allAttrs = this.getAllAttrs();
         const index = allItems.findIndex(item => item.attributeName === attrName);
         allItems[index].isAttributeSelected = isSelected;
         let selectedAttributes = allAttrs
-                .filter(item => item.isAttributeSelected)
-                .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]);
+            .filter(item => item.isAttributeSelected)
+            .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]);
+
 
         if (isSelected) {
             // Add to selected attr
@@ -596,13 +593,13 @@ class EditLdapEntry extends React.Component {
         const found = this.state.editableTableData.filter(item => (item.attr.toLowerCase() === rowAttr));
         if (isSelected) {
             if (found.length === 0 && rowAttr !== 'objectclass') {
-                const obj = {};
+                let obj = {};
                 obj.id = generateUniqueId();
                 obj.attr = rows[rowId].attributeName;
                 obj.val = "";
                 obj.namingAttr = false;
                 obj.required = false;
-                newEditableData = [...newEditableData, obj];
+                newEditableData =  [...newEditableData, obj]
             }
         } else if (found.length > 0) {
             // Remove the row if present
@@ -612,7 +609,7 @@ class EditLdapEntry extends React.Component {
         let validMods = true;
         for (const row of newEditableData) {
             if (row.val === "") {
-                validMods = false;
+                validMods = false
             }
         }
 
@@ -627,8 +624,8 @@ class EditLdapEntry extends React.Component {
 
     getAllAttrs = () => {
         const ocToProcess = [...this.state.selectedObjectClasses];
-        const rowsAttr = [];
-        const attrList = [];
+        let rowsAttr = [];
+        let attrList = [];
 
         ocToProcess.map(oc => {
             // Rebuild the attribute arrays.
@@ -663,7 +660,7 @@ class EditLdapEntry extends React.Component {
                 // empty value, to the editableTableData
                 const found = this.state.editableTableData.filter(item => (item.attr.toLowerCase() === attr));
                 if (found.length === 0 && attr !== 'objectclass') {
-                    const obj = {};
+                    let obj = {};
                     obj.id = generateUniqueId();
                     obj.attr = attr;
                     obj.val = "";
@@ -695,7 +692,7 @@ class EditLdapEntry extends React.Component {
                     rowsAttr.push({
                         attributeName: attr,
                         isAttributeSelected: selected,
-                        selected,
+                        selected: selected,
                         cells: [attr, oc.cells[0]]
                     });
                 }
@@ -725,16 +722,15 @@ class EditLdapEntry extends React.Component {
                     rowsAttr.push({
                         attributeName: addAttr,
                         isAttributeSelected: selected,
-                        selected,
+                        selected: selected,
                         cells: [addAttr, '']
                     });
                 }
             }
-            return [];
         });
 
         return rowsAttr;
-    };
+    }
 
     updateAttributeTableRows = () => {
         let rowsAttr = [];
@@ -742,29 +738,29 @@ class EditLdapEntry extends React.Component {
         rowsAttr = this.getAllAttrs();
 
         // Update the rows where user can select the attributes.
-        rowsAttr.sort((a, b) => (a.attributeName > b.attributeName) ? 1 : -1);
+        rowsAttr.sort((a, b) => (a.attributeName > b.attributeName) ? 1 : -1)
         this.setState({
             rowsAttr,
             selectedAttributes: rowsAttr.filter(item => item.isAttributeSelected)
-                    .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]),
+                .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]),
             itemCountAttr: rowsAttr.length,
         }, () => {
             // getItemsToShow() expects rowAttrs to be updated already, so we
             // have to do this callback
             this.setState({
                 pagedRowsAttr: this.getItemsToShow(this.state.pageAttr, this.state.perPageAttr,
-                                                   'AttributeTable')
+                'AttributeTable')
             });
         });
     };
 
     generateLdifData = () => {
-        const statementRows = [];
-        const updateArray = [];
-        const addArray = [];
-        const removeArray = [];
-        const ldifArray = [];
-        const cleanLdifArray = [];
+        let statementRows = [];
+        let updateArray = [];
+        let addArray = [];
+        let removeArray = [];
+        let ldifArray = [];
+        let cleanLdifArray = [];
         let numOfChanges = 0;
         let isFilePath = false;
 
@@ -816,7 +812,7 @@ class EditLdapEntry extends React.Component {
             found = false;
         }
 
-        for (const datum of updateArray) {
+        for (let datum of updateArray) {
             const myAttr = datum.attr;
             let myVal = datum.val;
             const isUserPwd = myAttr.toLowerCase() === "userpassword";
@@ -882,14 +878,12 @@ class EditLdapEntry extends React.Component {
                 if (myAttr.toLowerCase().startsWith("userpassword")) {
                     cleanLdifArray.push("userpassword: ********");
                 } else if (myAttr.toLowerCase().startsWith("jpegphoto") && mySeparator === '::') {
-                    const myTruncatedValue = (
-                        <div>
-                            {"jpegphoto:: "}
-                            <Label icon={<InfoCircleIcon />} color="blue">
-                                Value is too large to display
-                            </Label>
-                        </div>
-                    );
+                    const myTruncatedValue = (<div>
+                                                {"jpegphoto:: "}
+                                                <Label icon={<InfoCircleIcon />} color="blue" >
+                                                    Value is too large to display
+                                                </Label>
+                                            </div>);
                     cleanLdifArray.push(myTruncatedValue);
                 } else {
                     cleanLdifArray.push(...remainingData);
@@ -952,14 +946,12 @@ class EditLdapEntry extends React.Component {
             if (myAttr.toLowerCase().startsWith("userpassword")) {
                 cleanLdifArray.push("userpassword: ********");
             } else if (myAttr.toLowerCase().startsWith("jpegphoto") && mySeparator === '::') {
-                const myTruncatedValue = (
-                    <div>
-                        {"jpegphoto:: "}
-                        <Label icon={<InfoCircleIcon />} color="blue">
-                            Value is too large to display
-                        </Label>
-                    </div>
-                );
+                const myTruncatedValue = (<div>
+                                            {"jpegphoto:: "}
+                                            <Label icon={<InfoCircleIcon />} color="blue" >
+                                                Value is too large to display
+                                            </Label>
+                                        </div>);
                 cleanLdifArray.push(myTruncatedValue);
             } else {
                 cleanLdifArray.push(...remainingData);
@@ -1016,14 +1008,12 @@ class EditLdapEntry extends React.Component {
                 if (myAttr.toLowerCase().startsWith("userpassword")) {
                     cleanLdifArray.push("userpassword: ********");
                 } else if (myAttr.toLowerCase().startsWith("jpegphoto") && mySeparator === '::') {
-                    const myTruncatedValue = (
-                        <div>
-                            {"jpegphoto:: "}
-                            <Label icon={<InfoCircleIcon />} color="blue">
-                                Value is too large to display
-                            </Label>
-                        </div>
-                    );
+                    const myTruncatedValue = (<div>
+                                                {"jpegphoto:: "}
+                                                <Label icon={<InfoCircleIcon />} color="blue" >
+                                                    Value is too large to display
+                                                </Label>
+                                            </div>);
                     cleanLdifArray.push(myTruncatedValue);
                 } else {
                     cleanLdifArray.push(...remainingData);
@@ -1108,26 +1098,26 @@ class EditLdapEntry extends React.Component {
             statementRows,
             ldifArray,
             cleanLdifArray,
-            numOfChanges
+            numOfChanges: numOfChanges
         });
-    };
+    }
 
-    handleOCDropDownToggle = isOpen => {
+    onOCDropDownToggle = isOpen => {
         this.setState({
             isOCDropDownOpen: isOpen
         });
     };
 
-    handleOCDropDownSelect = event => {
+    onOCDropDownSelect = event => {
         this.setState((prevState, props) => {
             return { isOCDropDownOpen: !prevState.isOCDropDownOpen };
         });
     };
 
-    buildOCDropdown = () => {
+    buildOCDropdown= () => {
         const { isOCDropDownOpen, selectedObjectClasses } = this.state;
         const numSelected = selectedObjectClasses.length;
-        const ocs = selectedObjectClasses.map((oc) => oc.cells[0]);
+        let ocs = selectedObjectClasses.map((oc) => oc.cells[0]);
         ocs.sort();
         const items = ocs.map((oc) =>
             <DropdownItem key={oc}>{oc}</DropdownItem>
@@ -1136,10 +1126,10 @@ class EditLdapEntry extends React.Component {
         return (
             <Dropdown
                 className="ds-dropdown-padding"
-                onSelect={this.handleOCDropDownSelect}
+                onSelect={this.onOCDropDownSelect}
                 position={DropdownPosition.left}
                 toggle={
-                    <BadgeToggle id="toggle-oc-select" onToggle={this.handleOCDropDownToggle}>
+                    <BadgeToggle id="toggle-oc-select" onToggle={this.onOCDropDownToggle}>
                         {numSelected !== 0 ? <>{numSelected} selected </> : <>0 selected </>}
                     </BadgeToggle>
                 }
@@ -1147,15 +1137,15 @@ class EditLdapEntry extends React.Component {
                 dropdownItems={items}
             />
         );
-    };
+    }
 
-    handleAttrDropDownToggle = isOpen => {
+    onAttrDropDownToggle = isOpen => {
         this.setState({
             isAttrDropDownOpen: isOpen
         });
     };
 
-    handleAttrDropDownSelect = event => {
+    onAttrDropDownSelect = event => {
         this.setState((prevState, props) => {
             return { isAttrDropDownOpen: !prevState.isAttrDropDownOpen };
         });
@@ -1164,7 +1154,7 @@ class EditLdapEntry extends React.Component {
     buildAttrDropdown = () => {
         const { isAttrDropDownOpen, selectedAttributes } = this.state;
         const numSelected = this.state.selectedAttributes.length;
-        const attrs = selectedAttributes.map((attr) => attr[0]);
+        let attrs = selectedAttributes.map((attr) => attr[0]);
         attrs.sort();
         const items = attrs.map((attr) =>
             <DropdownItem key={attr}>{attr}</DropdownItem>
@@ -1173,10 +1163,10 @@ class EditLdapEntry extends React.Component {
         return (
             <Dropdown
                 className="ds-dropdown-padding"
-                onSelect={this.handleAttrDropDownSelect}
+                onSelect={this.onAttrDropDownSelect}
                 position={DropdownPosition.left}
                 toggle={
-                    <BadgeToggle id="toggle-attr-select" onToggle={this.handleAttrDropDownToggle}>
+                    <BadgeToggle id="toggle-attr-select" onToggle={this.onAttrDropDownToggle}>
                         {numSelected !== 0 ? <>{numSelected} selected </> : <>0 selected </>}
                     </BadgeToggle>
                 }
@@ -1184,15 +1174,36 @@ class EditLdapEntry extends React.Component {
                 dropdownItems={items}
             />
         );
-    };
+    }
 
     render () {
         const {
-            loading, columnsOc, pagedRowsOc, itemCountAttr, pageAttr,
-            perPageAttr, columnsAttr, pagedRowsAttr, commandOutput,
-            stepIdReached, ldifArray, statementRows, resultVariant,
-            editableTableData, numOfChanges, validMods, cleanLdifArray
+            loading, itemCountOc, pageOc, perPageOc, columnsOc, pagedRowsOc,
+            itemCountAttr, pageAttr, perPageAttr, columnsAttr, pagedRowsAttr,
+            commandOutput, namingAttribute, namingValue, stepIdReached,
+            itemCount, pageAddUser, perPageAddUser, ldifArray, statementRows,
+            resultVariant, editableTableData, numOfChanges,
+            validMods, cleanLdifArray
         } = this.state;
+
+        const loadingStateRows = [{
+            heightAuto: true,
+            cells: [
+                {
+                    props: { colSpan: 8 },
+                    title: (
+                        <Bullseye key="add-entry-bulleye" >
+                            <Title headingLevel="h2" size="lg" key="loading-title" >
+                                Loading...
+                            </Title>
+                            <center><Spinner size="xl" key="loading-spinner" /></center>
+                        </Bullseye>
+                    )
+                },
+                'Loading...',
+                'Loading...'
+            ]
+        }];
 
         const objectClassStep = (
             <>
@@ -1206,13 +1217,14 @@ class EditLdapEntry extends React.Component {
                 </div>
                 { loading &&
                     <div>
-                        <Bullseye className="ds-margin-top-xlg" key="add-entry-bulleye">
+                        <Bullseye className="ds-margin-top-xlg" key="add-entry-bulleye" >
                             <Title headingLevel="h3" size="lg" key="loading-title">
                                 Loading ...
                             </Title>
                         </Bullseye>
                         <Spinner className="ds-center" size="lg" key="loading-spinner" />
-                    </div>}
+                    </div>
+                }
                 <div className={loading ? "ds-hidden" : ""}>
                     <Grid className="ds-margin-top-lg">
                         <GridItem span={5}>
@@ -1220,8 +1232,8 @@ class EditLdapEntry extends React.Component {
                                 className="ds-font-size-md"
                                 placeholder='Search Objectclasses'
                                 value={this.state.searchOCValue}
-                                onChange={this.handleOCSearchChange}
-                                onClear={(evt, val) => this.handleOCSearchChange(evt, '')}
+                                onChange={this.onOCSearchChange}
+                                onClear={(evt) => this.onOCSearchChange('', evt)}
                             />
                         </GridItem>
                         <GridItem span={7}>
@@ -1230,9 +1242,9 @@ class EditLdapEntry extends React.Component {
                                 itemCount={this.state.itemCountOc}
                                 page={this.state.pageOc}
                                 perPage={this.state.perPageOc}
-                                onSetPage={this.handleSetPageOc}
+                                onSetPage={this.onSetPageOc}
                                 widgetId="pagination-step-objectclass"
-                                onPerPageSelect={this.handlePerPageSelectOc}
+                                onPerPageSelect={this.onPerPageSelectOc}
                                 variant="top"
                                 isCompact
                             />
@@ -1242,7 +1254,7 @@ class EditLdapEntry extends React.Component {
                         cells={columnsOc}
                         rows={pagedRowsOc}
                         canSelectAll={false}
-                        onSelect={this.handleSelectOc}
+                        onSelect={this.onSelectOc}
                         variant={TableVariant.compact}
                         aria-label="Pagination All ObjectClasses"
                     >
@@ -1269,8 +1281,8 @@ class EditLdapEntry extends React.Component {
                             className="ds-font-size-md"
                             placeholder='Search Attributes'
                             value={this.state.searchValue}
-                            onChange={this.handleAttrSearchChange}
-                            onClear={(evt, val) => this.handleAttrSearchChange(evt, '')}
+                            onChange={this.onAttrSearchChange}
+                            onClear={(evt) => this.onAttrSearchChange('', evt)}
                         />
                     </GridItem>
                     <GridItem span={7}>
@@ -1278,9 +1290,9 @@ class EditLdapEntry extends React.Component {
                             itemCount={itemCountAttr}
                             page={pageAttr}
                             perPage={perPageAttr}
-                            onSetPage={this.handleSetPageAttr}
+                            onSetPage={this.onSetPageAttr}
                             widgetId="pagination-step-attributes"
-                            onPerPageSelect={this.handlePerPageSelectAttr}
+                            onPerPageSelect={this.onPerPageSelectAttr}
                             variant="top"
                             isCompact
                         />
@@ -1290,7 +1302,7 @@ class EditLdapEntry extends React.Component {
                     className="ds-margin-top"
                     cells={columnsAttr}
                     rows={pagedRowsAttr}
-                    onSelect={this.handleSelectAttr}
+                    onSelect={this.onSelectAttr}
                     variant={TableVariant.compact}
                     aria-label="Pagination Attributes"
                     canSelectAll={false}
@@ -1302,6 +1314,7 @@ class EditLdapEntry extends React.Component {
             </>
         );
 
+        const myTitle = 'DN ( Distinguished Name )';
         const entryValuesStep = (
             <>
                 <TextContent>
@@ -1327,17 +1340,19 @@ class EditLdapEntry extends React.Component {
         const ldifListItems = cleanLdifArray.map((line, index) =>
             <SimpleListItem key={index} isCurrent={(typeof line === 'string' || line instanceof String) && line.startsWith('dn: ')}>
                 {(typeof line === 'string' || line instanceof String)
-                    ? line.length < 1000
-                        ? line
-                        : (
-                            <div>
-                                line.substring(0, 1000)
-                                <Label icon={<InfoCircleIcon />} color="blue">
-                                    Value is too large to display
-                                </Label>
-                            </div>
-                        )
-                    : line}
+                 ?
+                   line.length < 1000
+                   ?
+                   line
+                   :
+                   (<div>
+                       line.substring(0, 1000)
+                       <Label icon={<InfoCircleIcon />} color="blue" >
+                           Value is too large to display
+                       </Label>
+                   </div>)
+                 :
+                 line}
             </SimpleListItem>
         );
 
@@ -1355,7 +1370,8 @@ class EditLdapEntry extends React.Component {
                         { (ldifListItems.length > 0) &&
                             <SimpleList aria-label="LDIF data User">
                                 {ldifListItems}
-                            </SimpleList>}
+                            </SimpleList>
+                        }
                     </CardBody>
                 </Card>
             </div>
@@ -1380,7 +1396,8 @@ class EditLdapEntry extends React.Component {
                             <div>
                                 <Spinner className="ds-left-margin" size="md" />
                                 &nbsp;&nbsp;Modifying entry ...
-                            </div>}
+                            </div>
+                        }
                     </Alert>
                 </div>
                 {resultVariant === 'danger' &&
@@ -1391,7 +1408,8 @@ class EditLdapEntry extends React.Component {
                                 <h6 key={line.id}>{line.data}</h6>
                             ))}
                         </CardBody>
-                    </Card>}
+                    </Card>
+                }
             </div>
         );
 
@@ -1452,25 +1470,22 @@ class EditLdapEntry extends React.Component {
             }
         ];
 
-        const title = (
-            <>
-                Entry DN: &nbsp;&nbsp;<strong>{this.state.localProps.wizardEntryDn}</strong>
-            </>
-        );
+        const title = <>
+            Entry DN: &nbsp;&nbsp;<strong>{this.state.localProps.wizardEntryDn}</strong>
+        </>;
 
-        let editPage = (
+        let editPage =
             <Wizard
                 isOpen={this.state.localProps.isWizardOpen}
-                onClose={this.state.localProps.handleToggleWizard}
+                onClose={this.state.localProps.toggleOpenWizard}
                 steps={editEntrySteps}
                 title="Edit An LDAP Entry"
                 description={title}
-                onNext={this.handleNext}
-            />
-        );
+                onNext={this.onNext}
+            />;
 
         if (!this.state.groupGenericEditor && (this.state.isGroupOfNames || this.state.isGroupOfUniqueNames)) {
-            editPage = (
+            editPage =
                 <EditGroup
                     key={this.state.groupMembers}
                     groupdn={this.state.localProps.wizardEntryDn}
@@ -1482,9 +1497,8 @@ class EditLdapEntry extends React.Component {
                     editorLdapServer={this.state.localProps.editorLdapServer}
                     addNotification={this.state.localProps.addNotification}
                     openEditEntry={this.openEditEntry}
-                    onReload={this.handleLoadEntry}
-                />
-            );
+                    onReload={this.loadEntry}
+                />;
         }
 
         return (

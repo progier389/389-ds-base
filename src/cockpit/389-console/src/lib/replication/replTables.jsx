@@ -14,7 +14,7 @@ import {
     sortable,
     SortByDirection,
 } from '@patternfly/react-table';
-import { TrashAltIcon } from '@patternfly/react-icons/dist/js/icons/trash-alt-icon';
+import TrashAltIcon from '@patternfly/react-icons/dist/js/icons/trash-alt-icon';
 import PropTypes from "prop-types";
 
 class ReplAgmtTable extends React.Component {
@@ -35,15 +35,15 @@ class ReplAgmtTable extends React.Component {
             ],
         };
 
-        this.handleSetPage = (_event, pageNumber) => {
+        this.onSetPage = (_event, pageNumber) => {
             this.setState({
                 page: pageNumber
             });
         };
 
-        this.handlePerPageSelect = (_event, perPage) => {
+        this.onPerPageSelect = (_event, perPage) => {
             this.setState({
-                perPage
+                perPage: perPage
             });
         };
     }
@@ -88,15 +88,15 @@ class ReplAgmtTable extends React.Component {
     }
 
     convertStatus(msg) {
-        if (msg === "Initialized") {
+        if (msg == "Initialized") {
             return (
                 <i>Initialized</i>
             );
-        } else if (msg === "Not Initialized") {
+        } else if (msg == "Not Initialized") {
             return (
                 <i>Not Initialized</i>
             );
-        } else if (msg === "Initializing") {
+        } else if (msg == "Initializing") {
             return (
                 <div>
                     <i>Initializing</i> <Spinner size="sm" />
@@ -122,7 +122,7 @@ class ReplAgmtTable extends React.Component {
             rows.push({ cells: [row[0], row[1], row[2], row[3], { title: this.convertStatus(row[5]) }] });
         }
 
-        if (rows.length === 0) {
+        if (rows.length == 0) {
             has_rows = false;
             columns = [{ title: 'Replication Agreements' }];
             tableRows = [{ cells: ['No Agreements'] }];
@@ -136,8 +136,8 @@ class ReplAgmtTable extends React.Component {
                     className="ds-margin-top-xlg"
                     placeholder='Search agreements'
                     value={this.props.value}
-                    onChange={this.props.handleSearch}
-                    onClear={(evt) => this.props.search(evt, '')}
+                    onChange={this.props.search}
+                    onClear={(evt) => this.props.search('', evt)}
                 />
                 <Table
                     className="ds-margin-top-lg"
@@ -146,7 +146,7 @@ class ReplAgmtTable extends React.Component {
                     rows={tableRows}
                     variant={TableVariant.compact}
                     sortBy={this.props.sortBy}
-                    onSort={this.props.handleSort}
+                    onSort={this.props.sort}
                     actions={has_rows ? this.actions() : null}
                     dropdownPosition="right"
                     dropdownDirection="bottom"
@@ -160,8 +160,8 @@ class ReplAgmtTable extends React.Component {
                     perPage={this.state.perPage}
                     page={this.state.page}
                     variant={PaginationVariant.bottom}
-                    onSetPage={this.handleSetPage}
-                    onPerPageSelect={this.handlePerPageSelect}
+                    onSetPage={this.onSetPage}
+                    onPerPageSelect={this.onPerPageSelect}
                 />
             </div>
         );
@@ -178,7 +178,7 @@ class ManagerTable extends React.Component {
             columns: ['', ''],
         };
 
-        this.handleSort = this.handleSort.bind(this);
+        this.onSort = this.onSort.bind(this);
         this.getDeleteButton = this.getDeleteButton.bind(this);
     }
 
@@ -190,17 +190,17 @@ class ManagerTable extends React.Component {
                 cells: [managerRow, { props: { textCenter: true }, title: this.getDeleteButton(managerRow) }]
             });
         }
-        if (rows.length === 0) {
+        if (rows.length == 0) {
             rows = [{ cells: ['No Replication Managers'] }];
             columns = [{ title: '' }];
         }
         this.setState({
-            rows,
-            columns
+            rows: rows,
+            columns: columns
         });
     }
 
-    handleSort(_event, index, direction) {
+    onSort(_event, index, direction) {
         const rows = [];
         const sortedManagers = [...this.state.rows];
 
@@ -219,7 +219,7 @@ class ManagerTable extends React.Component {
                 index,
                 direction
             },
-            rows,
+            rows: rows,
             page: 1,
         });
     }
@@ -246,7 +246,7 @@ class ManagerTable extends React.Component {
                 rows={this.state.rows}
                 variant={TableVariant.compact}
                 sortBy={this.state.sortBy}
-                onSort={this.handleSort}
+                onSort={this.onSort}
             >
                 <TableHeader />
                 <TableBody />
@@ -270,7 +270,7 @@ class RUVTable extends React.Component {
             ],
         };
 
-        this.handleSort = this.handleSort.bind(this);
+        this.onSort = this.onSort.bind(this);
         this.getCleanButton = this.getCleanButton.bind(this);
     }
 
@@ -282,17 +282,17 @@ class RUVTable extends React.Component {
                 cells: [row.rid, row.url, row.maxcsn, { props: { textCenter: true }, title: this.getCleanButton(row.rid) }]
             });
         }
-        if (rows.length === 0) {
+        if (rows.length == 0) {
             rows = [{ cells: ["No RUV's"] }];
             columns = [{ title: "Remote RUV's" }];
         }
         this.setState({
-            rows,
-            columns
+            rows: rows,
+            columns: columns
         });
     }
 
-    handleSort(_event, index, direction) {
+    onSort(_event, index, direction) {
         const sortedRows = this.state.rows.sort((a, b) => (a[index] < b[index] ? -1 : a[index] > b[index] ? 1 : 0));
         this.setState({
             sortBy: {
@@ -327,7 +327,7 @@ class RUVTable extends React.Component {
                     rows={this.state.rows}
                     variant={TableVariant.compact}
                     sortBy={this.state.sortBy}
-                    onSort={this.handleSort}
+                    onSort={this.onSort}
                 >
                     <TableHeader />
                     <TableBody />
@@ -352,19 +352,19 @@ class ReplicaLDIFTable extends React.Component {
             ],
         };
 
-        this.handleSetPage = (_event, pageNumber) => {
+        this.onSetPage = (_event, pageNumber) => {
             this.setState({
                 page: pageNumber
             });
         };
 
-        this.handlePerPageSelect = (_event, perPage) => {
+        this.onPerPageSelect = (_event, perPage) => {
             this.setState({
-                perPage
+                perPage: perPage
             });
         };
 
-        this.handleSort = this.handleSort.bind(this);
+        this.onSort = this.onSort.bind(this);
     }
 
     componentDidMount() {
@@ -377,17 +377,17 @@ class ReplicaLDIFTable extends React.Component {
                 ]
             });
         }
-        if (rows.length === 0) {
+        if (rows.length == 0) {
             rows = [{ cells: ['No LDIF files'] }];
             columns = [{ title: 'LDIF File' }];
         }
         this.setState({
-            rows,
-            columns
+            rows: rows,
+            columns: columns
         });
     }
 
-    handleSort(_event, index, direction) {
+    onSort(_event, index, direction) {
         const rows = [];
         const sortedLDIF = [...this.props.rows];
 
@@ -410,7 +410,7 @@ class ReplicaLDIFTable extends React.Component {
                 index,
                 direction
             },
-            rows,
+            rows: rows,
             page: 1,
         });
     }
@@ -425,7 +425,7 @@ class ReplicaLDIFTable extends React.Component {
                 rows={rows}
                 variant={TableVariant.compact}
                 sortBy={sortBy}
-                onSort={this.handleSort}
+                onSort={this.onSort}
                 dropdownPosition="right"
                 dropdownDirection="bottom"
             >

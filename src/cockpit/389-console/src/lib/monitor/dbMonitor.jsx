@@ -154,8 +154,8 @@ export class DatabaseMonitor extends React.Component {
                         dbCacheList: chart_data,
                         ndnCacheList: ndn_chart_data,
                         ndnCacheUtilList: ndn_util_chart_data,
-                        count,
-                        ndnCount
+                        count: count,
+                        ndnCount: ndnCount
                     });
                 })
                 .fail(() => {
@@ -164,9 +164,7 @@ export class DatabaseMonitor extends React.Component {
     }
 
     startCacheRefresh() {
-        this.setState({
-            cache_refresh: setInterval(this.refreshCache, 2000),
-        });
+        this.state.cache_refresh = setInterval(this.refreshCache, 2000);
     }
 
     stopCacheRefresh() {
@@ -182,7 +180,7 @@ export class DatabaseMonitor extends React.Component {
         let ndncachemax = 0;
         let ndncachecurr = 0;
         let utilratio = 0;
-        let content = (
+        let content =
             <div className="ds-margin-top-xlg ds-center">
                 <TextContent>
                     <Text component={TextVariants.h3}>
@@ -190,8 +188,7 @@ export class DatabaseMonitor extends React.Component {
                     </Text>
                 </TextContent>
                 <Spinner className="ds-margin-top-lg" size="xl" />
-            </div>
-        );
+            </div>;
 
         if (!this.state.loading) {
             dbcachehit = parseInt(this.state.data.dbcachehitratio[0]);
@@ -199,7 +196,7 @@ export class DatabaseMonitor extends React.Component {
             ndncachemax = parseInt(this.state.data.maxnormalizeddncachesize[0]);
             ndncachecurr = parseInt(this.state.data.currentnormalizeddncachesize[0]);
             utilratio = Math.round((ndncachecurr / ndncachemax) * 100);
-            if (utilratio === 0) {
+            if (utilratio == 0) {
                 // Just round up to 1
                 utilratio = 1;
             }
@@ -229,7 +226,7 @@ export class DatabaseMonitor extends React.Component {
                 ndnUtilColor = ChartThemeColor.green;
             }
 
-            content = (
+            content =
                 <Tabs activeKey={this.state.activeTabKey} onSelect={this.handleNavSelect}>
                     <Tab eventKey={0} title={<TabTitleText>Database Cache</TabTitleText>}>
                         <div className="ds-margin-top">
@@ -333,7 +330,7 @@ export class DatabaseMonitor extends React.Component {
                                         <CardBody>
                                             <div className="ds-container">
                                                 <div className="ds-center">
-                                                    <TextContent className="ds-margin-top-xlg" title="The normalized DN cache hit ratio (normalizeddncachehitratio).">
+                                                    <TextContent className="ds-margin-top-xlg"  title="The normalized DN cache hit ratio (normalizeddncachehitratio).">
                                                         <Text component={TextVariants.h3}>
                                                             Cache Hit Ratio
                                                         </Text>
@@ -486,8 +483,7 @@ export class DatabaseMonitor extends React.Component {
                             </Grid>
                         </div>
                     </Tab>
-                </Tabs>
-            );
+                </Tabs>;
         }
 
         return (

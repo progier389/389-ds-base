@@ -113,9 +113,9 @@ class AddCosTemplate extends React.Component {
 
         this.handleConfirmModalToggle = () => {
             this.setState(({ isConfirmModalOpen }) => ({
-                isConfirmModalOpen: !isConfirmModalOpen,
+              isConfirmModalOpen: !isConfirmModalOpen,
             }));
-        };
+          };
 
         this.handleCreateTemplateEnd = () => {
             this.setState({
@@ -123,12 +123,12 @@ class AddCosTemplate extends React.Component {
             }, () => { this.props.onReload() });
         };
 
-        this.handleMinusConfig = (id) => {
+        this.onMinusConfig = (id) => {
             this.setState({
                 [id]: Number(this.state[id]) - 1
             });
         };
-        this.handleConfigChange = (event, id, min, max) => {
+        this.onConfigChange = (event, id, min, max) => {
             let maxValue = this.maxValue;
             if (max !== 0) {
                 maxValue = max;
@@ -138,13 +138,13 @@ class AddCosTemplate extends React.Component {
                 [id]: newValue > maxValue ? maxValue : newValue < min ? min : newValue
             });
         };
-        this.handlePlusConfig = (id) => {
+        this.onPlusConfig = (id) => {
             this.setState({
                 [id]: Number(this.state[id]) + 1
             });
-        };
+        }
 
-        this.handleNext = ({ id }) => {
+        this.onNext = ({ id }) => {
             this.setState({
                 stepIdReached: this.state.stepIdReached < id ? id : this.state.stepIdReached
             });
@@ -163,25 +163,26 @@ class AddCosTemplate extends React.Component {
             } else if (id === 7) {
                 // Create the LDAP entry.
                 createLdapEntry(this.props.editorLdapServer,
-                                this.state.ldifArray,
-                                (result) => {
-                                    const myDn = this.state.ldifArray[0].substring(4);
-                                    this.setState({
-                                        commandOutput: result.errorCode === 0 ? 'Successfully added entry!' : 'Failed to add entry, error: ' + result.errorCode,
-                                        resultVariant: result.errorCode === 0 ? 'success' : 'danger',
-                                        adding: false,
-                                        createdTemplate: myDn,
-                                    }, () => { this.props.onReload() });
+                    this.state.ldifArray,
+                    (result) => {
+                        const myDn = this.state.ldifArray[0].substring(4);
+                        this.setState({
+                            commandOutput: result.output,
+                            commandOutput: result.errorCode === 0 ? 'Successfully added entry!' : 'Failed to add entry, error: ' + result.errorCode ,
+                            resultVariant: result.errorCode === 0 ? 'success' : 'danger',
+                            adding: false,
+                            createdTemplate: myDn,
+                        }, () => { this.props.onReload() });
 
-                                    const opInfo = {
-                                        operationType: 'ADD',
-                                        resultCode: result.errorCode,
-                                        time: Date.now(),
-                                        entryDn: myDn,
-                                        relativeDn: this.state.namingAttrVal
-                                    };
-                                    this.props.setWizardOperationInfo(opInfo);
-                                }
+                        const opInfo = {
+                            operationType: 'ADD',
+                            resultCode: result.errorCode,
+                            time: Date.now(),
+                            entryDn: myDn,
+                            relativeDn: this.state.namingAttrVal
+                        }
+                        this.props.setWizardOperationInfo(opInfo);
+                    }
                 );
             } else if ((id === 8) && (this.props.cosDefCreateMoreTemplate)) {
                 this.setState({
@@ -194,13 +195,13 @@ class AddCosTemplate extends React.Component {
             }
         };
 
-        this.handleToggleOpenWizard = () => {
+        this.toggleOpenWizard = () => {
             if (this.props.definitionWizardEntryDn !== '') {
                 this.setState({
                     goBackToCoSDefinition: true
                 }, () => { this.props.onReload() });
             } else {
-                this.props.handleToggleWizard();
+                this.props.toggleOpenWizard();
             }
         };
 
@@ -211,7 +212,7 @@ class AddCosTemplate extends React.Component {
         };
 
         this.cleanUpEntry = () => {
-            const newRows = [];
+            let newRows = [];
             let validMods = true;
             for (const row of this.state.editableTableData) {
                 const attr = row.attr.toLowerCase();
@@ -227,11 +228,11 @@ class AddCosTemplate extends React.Component {
                 editableTableData: newRows,
                 validMods,
             });
-        };
+        }
 
-        this.handleOCSearchChange = (event, value) => {
+        this.onOCSearchChange = (value, event) => {
             let ocRows = [];
-            const allOCs = [];
+            let allOCs = [];
             const val = value.toLowerCase();
 
             // Get fresh list of Objectclasses andwhat is selected
@@ -258,10 +259,9 @@ class AddCosTemplate extends React.Component {
                             oc.required.join(', '),
                             oc.optional.join(', '),
                         ],
-                        selected,
+                        selected: selected,
                         disableSelection: selectionDisabled
                     });
-                return [];
             });
 
             // Process search filter on the entire list
@@ -284,12 +284,12 @@ class AddCosTemplate extends React.Component {
                 pagedRowsOc: ocRows.slice(0, this.state.perPageOc),
                 itemCountOc: ocRows.length,
                 searchValue: value
-            });
-        };
+            })
+        }
 
-        this.handleAttrSearchChange = (event, value) => {
+        this.onAttrSearchChange = (value, event) => {
             let attrRows = [];
-            const allAttrs = this.state.rowsAttrOrig;
+            let allAttrs = this.state.rowsAttrOrig;
             const val = value.toLowerCase();
 
             // Process search filter on the entire list
@@ -311,7 +311,7 @@ class AddCosTemplate extends React.Component {
                 itemCountAttr: attrRows.length,
                 searchAttrValue: value
             });
-        };
+        }
         // End constructor().
     }
 
@@ -321,7 +321,7 @@ class AddCosTemplate extends React.Component {
 
     isAttributeRequired = attr => {
         return this.requiredAttributes.includes(attr);
-    };
+    }
 
     enableNextStep = (yes) => {
         this.setState({
@@ -350,14 +350,14 @@ class AddCosTemplate extends React.Component {
             namingVal,
             namingAttrVal,
         });
-    };
+    }
 
     componentDidMount () {
         const ocArray = [];
         getSingleValuedAttributes(this.props.editorLdapServer,
-                                  (myAttrs) => {
-                                      this.singleValuedAttributes = [...myAttrs];
-                                  });
+            (myAttrs) => {
+                this.singleValuedAttributes = [...myAttrs];
+        });
 
         this.props.allObjectclasses.map(oc => {
             let selectionDisabled = false;
@@ -377,10 +377,10 @@ class AddCosTemplate extends React.Component {
                             oc.required.concat(oc.optional).join(', '),
                             ''
                         ],
-                        selected,
+                        selected: selected,
                         disableSelection: selectionDisabled
                     });
-                const selectedOC = [...this.state.selectedObjectClasses];
+                let selectedOC = [...this.state.selectedObjectClasses];
                 selectedOC.push(ocArray[ocArray.length - 1]);
                 this.setState({
                     selectedObjectClasses: selectedOC,
@@ -393,11 +393,10 @@ class AddCosTemplate extends React.Component {
                             oc.required.join(', '),
                             oc.optional.join(', '),
                         ],
-                        selected,
+                        selected: selected,
                         disableSelection: selectionDisabled
                     });
             }
-            return [];
         });
 
         this.setState({
@@ -408,21 +407,21 @@ class AddCosTemplate extends React.Component {
         });
     }
 
-    handleSetPageOc = (_event, pageNumber) => {
+    onSetPageOc = (_event, pageNumber) => {
         this.setState({
             pageOc: pageNumber,
             pagedRowsOc: this.getItemsToShow(pageNumber, this.state.perPageOc, 'ObjectClassTable')
         });
     };
 
-    handleSetPageAttr = (_event, pageNumber) => {
+    onSetPageAttr = (_event, pageNumber) => {
         this.setState({
             pageAttr: pageNumber,
             pagedRowsAttr: this.getItemsToShow(pageNumber, this.state.perPageAttr, 'AttributeTable')
         });
     };
 
-    handlePerPageSelectOc = (_event, perPage) => {
+    onPerPageSelectOc = (_event, perPage) => {
         this.setState({
             pageOc: 1,
             perPageOc: perPage,
@@ -430,7 +429,7 @@ class AddCosTemplate extends React.Component {
         });
     };
 
-    handlePerPageSelectAttr = (_event, perPage) => {
+    onPerPageSelectAttr = (_event, perPage) => {
         this.setState({
             pageAttr: 1,
             perPageAttr: perPage,
@@ -449,15 +448,15 @@ class AddCosTemplate extends React.Component {
         return newRows;
     }
 
-    handleSelectOc = (event, isSelected, rowId) => {
+    onSelectOc = (event, isSelected, rowId) => {
         // Process only the entries in the current page ( pagedRowsOc )
-        const rows = [...this.state.pagedRowsOc];
+        let rows = [...this.state.pagedRowsOc];
         rows[rowId].selected = isSelected;
         // Find the entry in the full array and set 'isAttributeSelected' accordingly
         // The property 'selected' is used to build the attribute table.
         // The row ID cannot be used since it changes with the pagination.
         const ocName = this.state.pagedRowsOc[rowId].cells[0];
-        const allItems = [...this.state.rowsOc];
+        let allItems = [...this.state.rowsOc];
         const index = allItems.findIndex(item => item.cells[0] === ocName);
         allItems[index].selected = isSelected;
 
@@ -470,20 +469,16 @@ class AddCosTemplate extends React.Component {
             selectedObjectClasses = selectedObjectClasses.filter(row => (row.cells[0] !== allItems[index].cells[0]));
         }
 
-        const attrsToRemove = [];
+        let attrsToRemove = [];
         if (!isSelected) {
             // Removing an objectclass, this will impact the entry as we might have to remove attributes
-            let ocAttrs = allItems[index].cells[1].toLowerCase().replace(/\s/g, '')
-                    .split(',');
-            ocAttrs = ocAttrs.concat(allItems[index].cells[2].toLowerCase().replace(/\s/g, '')
-                    .split(','));
+            let ocAttrs = allItems[index].cells[1].toLowerCase().replace(/\s/g, '').split(',');
+            ocAttrs = ocAttrs.concat(allItems[index].cells[2].toLowerCase().replace(/\s/g, '').split(','));
             let currAttrs = [];
             for (const oc of selectedObjectClasses) {
                 // Gather all the allowed attributes
-                currAttrs = currAttrs.concat(oc.cells[1].toLowerCase().replace(/\s/g, '')
-                        .split(','));
-                currAttrs = currAttrs.concat(oc.cells[2].toLowerCase().replace(/\s/g, '')
-                        .split(','));
+                currAttrs = currAttrs.concat(oc.cells[1].toLowerCase().replace(/\s/g, '').split(','));
+                currAttrs = currAttrs.concat(oc.cells[2].toLowerCase().replace(/\s/g, '').split(','));
             }
 
             for (const attr of ocAttrs) {
@@ -504,9 +499,9 @@ class AddCosTemplate extends React.Component {
         });
     };
 
-    handleSelectAttr = (event, isSelected, rowId) => {
+    onSelectAttr = (event, isSelected, rowId) => {
         let newEditableData = this.state.editableTableData;
-        const rows = [...this.state.pagedRowsAttr];
+        let rows;
 
         // Quick hack until the code is upgraded to a version that supports "disableCheckbox"
         if (this.state.pagedRowsAttr[rowId].disableCheckbox === true) {
@@ -514,31 +509,32 @@ class AddCosTemplate extends React.Component {
         } // End hack.
 
         // Process only the entries in the current page ( pagedRowsAttr )
+        rows = [...this.state.pagedRowsAttr];
         rows[rowId].selected = isSelected;
 
         // Find the entry in the full array and set 'isAttributeSelected' accordingly
         // The property 'isAttributeSelected' is used to build the LDAP entry to add.
         // The row ID cannot be used since it changes with the pagination.
-        const attrName = rows[rowId].cells[0];
-        const allItems = [...this.state.rowsAttr];
+        const attrName = this.state.pagedRowsAttr[rowId].cells[0];
+        let allItems = [...this.state.rowsAttr];
         const index = allItems.findIndex(item => item.cells[0] === attrName);
         allItems[index].isAttributeSelected = isSelected;
         const selectedAttributes = allItems
-                .filter(item => item.isAttributeSelected)
-                .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]);
+            .filter(item => item.isAttributeSelected)
+            .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]);
 
         // Update the table rows as needed
         const rowAttr = rows[rowId].attributeName.toLowerCase();
         const found = this.state.editableTableData.filter(item => (item.attr.toLowerCase() === rowAttr));
         if (isSelected) {
             if (found.length === 0 && rowAttr !== 'objectclass') {
-                const obj = {};
+                let obj = {};
                 obj.id = generateUniqueId();
                 obj.attr = rows[rowId].attributeName;
                 obj.val = "";
                 obj.namingAttr = false;
                 obj.required = false;
-                newEditableData = [...newEditableData, obj];
+                newEditableData =  [...newEditableData, obj]
             }
         } else if (found.length > 0) {
             // Remove the row if present
@@ -548,7 +544,7 @@ class AddCosTemplate extends React.Component {
         let validMods = true;
         for (const row of newEditableData) {
             if (row.val === "") {
-                validMods = false;
+                validMods = false
             }
         }
 
@@ -563,12 +559,12 @@ class AddCosTemplate extends React.Component {
 
     updateAttributeTableRows = () => {
         const ocToProcess = [...this.state.selectedObjectClasses];
-        const rowsAttr = [];
-        const attrList = [];
+        let rowsAttr = [];
+        let attrList = [];
         let namingRowID = this.state.namingRowID;
         let namingAttr = this.state.namingAttr;
-        const namingVal = this.state.namingVal;
-        const cospriority = this.state.cospriority;
+        let namingVal = this.state.namingVal;
+        let cospriority = this.state.cospriority;
 
         for (const oc of ocToProcess) {
             // Rebuild the attribute arrays.
@@ -609,12 +605,12 @@ class AddCosTemplate extends React.Component {
                         namingAttr = attr;
                     }
 
-                    const obj = {};
+                    let obj = {};
                     obj.id = new_id;
                     obj.attr = attr;
-                    if (attr.toLowerCase() === 'cn') {
+                    if (attr.toLowerCase() == 'cn') {
                         obj.val = namingVal;
-                    } else if (attr.toLowerCase() === 'cospriority') {
+                    } else if (attr.toLowerCase() == 'cospriority') {
                         obj.val = cospriority;
                     } else {
                         obj.val = '';
@@ -625,8 +621,8 @@ class AddCosTemplate extends React.Component {
                     this.setState(prevState => ({
                         editableTableData: [...prevState.editableTableData, obj],
                         validMods: false,
-                        namingRowID,
-                        namingAttr,
+                        namingRowID: namingRowID,
+                        namingAttr: namingAttr,
                     }));
                 }
             }
@@ -649,7 +645,7 @@ class AddCosTemplate extends React.Component {
                     rowsAttr.push({
                         attributeName: attr,
                         isAttributeSelected: selected,
-                        selected,
+                        selected: selected,
                         cells: [attr, oc.cells[0]]
                     });
                 }
@@ -657,19 +653,19 @@ class AddCosTemplate extends React.Component {
         }
 
         // Update the rows where user can select the attributes.
-        rowsAttr.sort((a, b) => (a.attributeName > b.attributeName) ? 1 : -1);
+        rowsAttr.sort((a, b) => (a.attributeName > b.attributeName) ? 1 : -1)
         this.setState({
             rowsAttr,
             rowsAttrOrig: [...rowsAttr],
             selectedAttributes: rowsAttr.filter(item => item.isAttributeSelected)
-                    .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]),
+                .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]),
             itemCountAttr: rowsAttr.length,
         }, () => {
             // getItemsToShow() expects rowAttrs to be updated already, so we
             // have to do this callback
             this.setState({
                 pagedRowsAttr: this.getItemsToShow(this.state.pageAttr, this.state.perPageAttr,
-                                                   'AttributeTable')
+                'AttributeTable')
             });
         });
     };
@@ -678,7 +674,7 @@ class AddCosTemplate extends React.Component {
         const objectClassData = ['top'];
         const attribute = this.state.namingAttr;
         const value = this.state.namingVal;
-        const valueData = [];
+        let valueData = [];
 
         for (const oc of this.state.selectedObjectClasses) {
             if (oc && !objectClassData.includes(oc.cells[0])) {
@@ -696,11 +692,11 @@ class AddCosTemplate extends React.Component {
             dnLine,
             ...ocArray,
             ...valueData
-        ];
+        ]
 
         // Hide userpassword value
-        const cleanLdifArray = [...ldifArray];
-        for (const idx in cleanLdifArray) {
+        let cleanLdifArray = [...ldifArray];
+        for (let idx in cleanLdifArray) {
             if (cleanLdifArray[idx].toLowerCase().startsWith("userpassword")) {
                 cleanLdifArray[idx] = "userpassword: ********";
                 break;
@@ -711,34 +707,35 @@ class AddCosTemplate extends React.Component {
             ldifArray,
             cleanLdifArray
         });
-    };
 
-    handleOCDropDownToggle = isOpen => {
+    }
+
+    onOCDropDownToggle = isOpen => {
         this.setState({
             isOCDropDownOpen: isOpen
         });
     };
 
-    handleOCDropDownSelect = event => {
+    onOCDropDownSelect = event => {
         this.setState((prevState, props) => {
             return { isOCDropDownOpen: !prevState.isOCDropDownOpen };
         });
     };
 
-    buildOCDropdown = () => {
+    buildOCDropdown= () => {
         const { isOCDropDownOpen, selectedObjectClasses } = this.state;
         const numSelected = this.state.rowsOc.filter(item => item.selected).length;
-        const items = selectedObjectClasses.map((oc) =>
+        const items = this.state.selectedObjectClasses.map((oc) =>
             <DropdownItem key={oc.cells[0]}>{oc.cells[0]}</DropdownItem>
         );
 
         return (
             <Dropdown
                 className="ds-dropdown-padding"
-                onSelect={this.handleOCDropDownSelect}
+                onSelect={this.onOCDropDownSelect}
                 position={DropdownPosition.left}
                 toggle={
-                    <BadgeToggle id="toggle-oc-select" onToggle={this.handleOCDropDownToggle}>
+                    <BadgeToggle id="toggle-oc-select" onToggle={this.onOCDropDownToggle}>
                         {numSelected !== 0 ? <>{numSelected} selected </> : <>0 selected </>}
                     </BadgeToggle>
                 }
@@ -746,15 +743,15 @@ class AddCosTemplate extends React.Component {
                 dropdownItems={items}
             />
         );
-    };
+    }
 
-    handleAttrDropDownToggle = isOpen => {
+    onAttrDropDownToggle = isOpen => {
         this.setState({
             isAttrDropDownOpen: isOpen
         });
     };
 
-    handleAttrDropDownSelect = event => {
+    onAttrDropDownSelect = event => {
         this.setState((prevState, props) => {
             return { isAttrDropDownOpen: !prevState.isAttrDropDownOpen };
         });
@@ -770,10 +767,10 @@ class AddCosTemplate extends React.Component {
         return (
             <Dropdown
                 className="ds-dropdown-padding"
-                onSelect={this.handleAttrDropDownSelect}
+                onSelect={this.onAttrDropDownSelect}
                 position={DropdownPosition.left}
                 toggle={
-                    <BadgeToggle id="toggle-attr-select" onToggle={this.handleAttrDropDownToggle}>
+                    <BadgeToggle id="toggle-attr-select" onToggle={this.onAttrDropDownToggle}>
                         {numSelected !== 0 ? <>{numSelected} selected </> : <>0 selected </>}
                     </BadgeToggle>
                 }
@@ -781,13 +778,13 @@ class AddCosTemplate extends React.Component {
                 dropdownItems={items}
             />
         );
-    };
+    }
 
     setNamingRowID = (namingRowID) => {
         let namingAttrVal = "";
         let namingAttr = "";
         let namingVal = "";
-        const rows = this.state.editableTableData;
+        let rows = this.state.editableTableData;
 
         for (const row of rows) {
             if (row.id === namingRowID) {
@@ -811,11 +808,7 @@ class AddCosTemplate extends React.Component {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
         this.setState({
             [attr]: value,
-        });
-    }
-
-    onToggleWizard () {
-        this.props.handleToggleWizard();
+        })
     }
 
     render () {
@@ -828,44 +821,40 @@ class AddCosTemplate extends React.Component {
         } = this.state;
 
         if (createTemplateEnd) {
-            return (
-                <AddCosTemplate
-                    isWizardOpen={this.props.isWizardOpen}
-                    handleToggleWizard={this.opToggleWizard}
-                    wizardEntryDn={this.props.wizardEntryDn}
-                    editorLdapServer={this.props.editorLdapServer}
-                    setWizardOperationInfo={this.props.setWizardOperationInfo}
-                    firstStep={this.props.firstStep}
-                    onReload={this.props.onReload}
-                    allObjectclasses={this.props.allObjectclasses}
-                    treeViewRootSuffixes={this.props.treeViewRootSuffixes}
-                    stepReached={2}
-                    cosDefCreateMoreTemplate
-                />
-            );
+            return <AddCosTemplate
+                isWizardOpen={this.props.isWizardOpen}
+                toggleOpenWizard={this.props.toggleOpenWizard}
+                wizardEntryDn={this.props.wizardEntryDn}
+                editorLdapServer={this.props.editorLdapServer}
+                setWizardOperationInfo={this.props.setWizardOperationInfo}
+                firstStep={this.props.firstStep}
+                onReload={this.props.onReload}
+                allObjectclasses={this.props.allObjectclasses}
+                treeViewRootSuffixes={this.props.treeViewRootSuffixes}
+                stepReached={2}
+                cosDefCreateMoreTemplate
+            />
         } else if (goBackToCoSDefinition) {
             let myDn = this.state.createdTemplate;
             if (resultVariant === 'danger') {
-                myDn = "";
+                myDn = ""
             }
-            return (
-                <AddCosDefinition
-                    isWizardOpen={this.props.isWizardOpen}
-                    handleToggleWizard={this.onToggleWizard}
-                    wizardEntryDn={this.props.definitionWizardEntryDn}
-                    editorLdapServer={this.props.editorLdapServer}
-                    setWizardOperationInfo={this.props.setWizardOperationInfo}
-                    firstStep={this.props.firstStep}
-                    onReload={this.props.onReload}
-                    allObjectclasses={this.props.allObjectclasses}
-                    treeViewRootSuffixes={this.props.treeViewRootSuffixes}
-                    createdTemplateDN={myDn}
-                    stepReached={2}
-                    cosDefName={this.props.cosDefName}
-                    cosDefDesc={this.props.cosDefDesc}
-                    cosDefType={this.props.cosDefType}
-                />
-            );
+            return <AddCosDefinition
+                isWizardOpen={this.props.isWizardOpen}
+                toggleOpenWizard={this.props.toggleOpenWizard}
+                wizardEntryDn={this.props.definitionWizardEntryDn}
+                editorLdapServer={this.props.editorLdapServer}
+                setWizardOperationInfo={this.props.setWizardOperationInfo}
+                firstStep={this.props.firstStep}
+                onReload={this.props.onReload}
+                allObjectclasses={this.props.allObjectclasses}
+                treeViewRootSuffixes={this.props.treeViewRootSuffixes}
+                createdTemplateDN={myDn}
+                stepReached={2}
+                cosDefName={this.props.cosDefName}
+                cosDefDesc={this.props.cosDefDesc}
+                cosDefType={this.props.cosDefType}
+            />
         }
 
         const namingValAndPriority = (
@@ -937,22 +926,18 @@ class AddCosTemplate extends React.Component {
                     <Grid className="ds-margin-top">
                         <GridItem className="ds-label" span={3}>
                             <TextContent>
-                                <Text>CoS Priority
-                                    <Tooltip
-                                        position="bottom"
-                                        content={
-                                            <div>
-                                                Specifies which template provides the attribute value when CoS templates
-                                                compete to provide an attribute value. This attribute represents the global
-                                                priority of a template. A priority of zero is the highest priority.
-                                            </div>
-                                        }
-                                    >
-                                        <a className="ds-font-size-md">
-                                            <InfoCircleIcon className="ds-info-icon" />
-                                        </a>
-                                    </Tooltip>
-                                </Text>
+                                <Text>CoS Priority <Tooltip
+                                    position="bottom"
+                                    content={
+                                        <div>
+                                            Specifies which template provides the attribute value when CoS templates
+                                            compete to provide an attribute value. This attribute represents the global
+                                            priority of a template. A priority of zero is the highest priority.
+                                        </div>
+                                    }
+                                >
+                                    <a className="ds-font-size-md"><InfoCircleIcon className="ds-info-icon" /></a>
+                                </Tooltip></Text>
                             </TextContent>
                         </GridItem>
                         <GridItem span={9}>
@@ -960,9 +945,9 @@ class AddCosTemplate extends React.Component {
                                 value={cospriority}
                                 min={0}
                                 max={2147483647}
-                                onMinus={() => { this.handleMinusConfig("cospriority") }}
-                                onChange={(e) => { this.handleConfigChange(e, "cospriority", 0, 2147483647) }}
-                                onPlus={() => { this.handlePlusConfig("cospriority") }}
+                                onMinus={() => { this.onMinusConfig("cospriority") }}
+                                onChange={(e) => { this.onConfigChange(e, "cospriority", 0, 2147483647) }}
+                                onPlus={() => { this.onPlusConfig("cospriority") }}
                                 inputName="input"
                                 inputAriaLabel="number input"
                                 minusBtnAriaLabel="minus"
@@ -974,6 +959,7 @@ class AddCosTemplate extends React.Component {
                 </Form>
             </div>
         );
+
 
         const objectClassStep = (
             <>
@@ -987,13 +973,14 @@ class AddCosTemplate extends React.Component {
                 </div>
                 { loading &&
                     <div>
-                        <Bullseye className="ds-margin-top-xlg" key="add-entry-bulleye">
+                        <Bullseye className="ds-margin-top-xlg" key="add-entry-bulleye" >
                             <Title headingLevel="h3" size="lg" key="loading-title">
                                 Loading ObjectClasses ...
                             </Title>
                         </Bullseye>
                         <Spinner className="ds-center" size="lg" key="loading-spinner" />
-                    </div>}
+                    </div>
+                }
                 <div className={loading ? "ds-hidden" : ""}>
                     <Grid className="ds-margin-top-lg">
                         <GridItem span={5}>
@@ -1001,8 +988,8 @@ class AddCosTemplate extends React.Component {
                                 className="ds-font-size-md"
                                 placeholder='Search Objectclasses'
                                 value={this.state.searchValue}
-                                onChange={this.handleOCSearchChange}
-                                onClear={(evt, val) => this.handleOCSearchChange(evt, '')}
+                                onChange={this.onOCSearchChange}
+                                onClear={(evt) => this.onOCSearchChange('', evt)}
                             />
                         </GridItem>
                         <GridItem span={7}>
@@ -1011,9 +998,9 @@ class AddCosTemplate extends React.Component {
                                 itemCount={itemCountOc}
                                 page={pageOc}
                                 perPage={perPageOc}
-                                onSetPage={this.handleSetPageOc}
+                                onSetPage={this.onSetPageOc}
                                 widgetId="pagination-step-objectclass"
-                                onPerPageSelect={this.handlePerPageSelectOc}
+                                onPerPageSelect={this.onPerPageSelectOc}
                                 variant="top"
                                 isCompact
                             />
@@ -1023,7 +1010,7 @@ class AddCosTemplate extends React.Component {
                         cells={columnsOc}
                         rows={pagedRowsOc}
                         canSelectAll={false}
-                        onSelect={this.handleSelectOc}
+                        onSelect={this.onSelectOc}
                         variant={TableVariant.compact}
                         aria-label="Pagination All ObjectClasses"
                     >
@@ -1050,8 +1037,8 @@ class AddCosTemplate extends React.Component {
                             className="ds-font-size-md"
                             placeholder='Search Attributes'
                             value={this.state.searchAttrValue}
-                            onChange={this.handleAttrSearchChange}
-                            onClear={(evt, val) => this.handleAttrSearchChange(evt, '')}
+                            onChange={this.onAttrSearchChange}
+                            onClear={(evt) => this.onAttrSearchChange('', evt)}
                         />
                     </GridItem>
                     <GridItem span={7}>
@@ -1059,9 +1046,9 @@ class AddCosTemplate extends React.Component {
                             itemCount={itemCountAttr}
                             page={pageAttr}
                             perPage={perPageAttr}
-                            onSetPage={this.handleSetPageAttr}
+                            onSetPage={this.onSetPageAttr}
                             widgetId="pagination-step-attributes"
-                            onPerPageSelect={this.handlePerPageSelectAttr}
+                            onPerPageSelect={this.onPerPageSelectAttr}
                             dropDirection="up"
                             isCompact
                         />
@@ -1072,7 +1059,7 @@ class AddCosTemplate extends React.Component {
                     className="ds-margin-top"
                     cells={columnsAttr}
                     rows={pagedRowsAttr}
-                    onSelect={this.handleSelectAttr}
+                    onSelect={this.onSelectAttr}
                     variant={TableVariant.compact}
                     aria-label="Pagination Attributes"
                     canSelectAll={false}
@@ -1094,7 +1081,7 @@ class AddCosTemplate extends React.Component {
                     isInline
                     title={myTitle}
                 >
-                    <b>Entry DN:&nbsp;&nbsp;&nbsp;</b>{(namingAttr || "??????")}={namingVal || "??????"},{this.props.wizardEntryDn}
+                    <b>Entry DN:&nbsp;&nbsp;&nbsp;</b>{(namingAttr ? namingAttr : "??????")}={namingVal ? namingVal : "??????"},{this.props.wizardEntryDn}
                 </Alert>
                 <TextContent className="ds-margin-top">
                     <Text component={TextVariants.h3}>
@@ -1137,7 +1124,8 @@ class AddCosTemplate extends React.Component {
                         { (ldifListItems.length > 0) &&
                             <SimpleList aria-label="LDIF data User">
                                 {ldifListItems}
-                            </SimpleList>}
+                            </SimpleList>
+                        }
                     </CardBody>
                 </Card>
             </div>
@@ -1162,7 +1150,8 @@ class AddCosTemplate extends React.Component {
                             <div>
                                 <Spinner className="ds-left-margin" size="md" />
                                 &nbsp;&nbsp;Adding entry ...
-                            </div>}
+                            </div>
+                        }
                     </Alert>
                 </div>
                 {resultVariant === 'danger' &&
@@ -1173,7 +1162,8 @@ class AddCosTemplate extends React.Component {
                                 <h6 key={line.id}>{line.data}</h6>
                             ))}
                         </CardBody>
-                    </Card>}
+                    </Card>
+                }
                 <Modal
                     variant={ModalVariant.small}
                     title="Create CoS Template"
@@ -1181,13 +1171,13 @@ class AddCosTemplate extends React.Component {
                     onClose={this.handleConfirmModalToggle}
                     actions={[
                         <Button key="confirm" variant="primary" onClick={this.handleCreateTemplateEnd}>
-                            Create Template
+                        Create Template
                         </Button>,
                         <Button key="cancel" variant="link" onClick={this.handleConfirmModalToggle}>
-                            Cancel
+                        Cancel
                         </Button>
                     ]}
-                >
+                    >
                     <Grid>
                         <GridItem span={12}>
                             <TextContent className="ds-margin-top">
@@ -1218,22 +1208,20 @@ class AddCosTemplate extends React.Component {
         }
 
         const addEntrySteps = [
-            ...((this.props.definitionWizardEntryDn !== '') || (this.props.cosDefCreateMoreTemplate)
-                ? []
-                : [
-                    {
-                        id: 1,
-                        name: this.props.firstStep[0].name,
-                        component: this.props.firstStep[0].component,
-                        canJumpTo: stepIdReached >= 1 && stepIdReached < 8,
-                        hideBackButton: true
-                    },
-                ]),
+            ...((this.props.definitionWizardEntryDn !== '') || (this.props.cosDefCreateMoreTemplate) ? [] : [
+                {
+                    id: 1,
+                    name: this.props.firstStep[0].name,
+                    component: this.props.firstStep[0].component,
+                    canJumpTo: stepIdReached >= 1 && stepIdReached < 8,
+                    hideBackButton: true
+                },
+            ]),
             {
                 id: 2,
                 name: 'Select Name & Priority',
                 component: namingValAndPriority,
-                enableNext: namingVal !== '',
+                enableNext: namingVal === '' ? false : true,
                 canJumpTo: stepIdReached >= 2 && stepIdReached < 8,
             },
             {
@@ -1273,34 +1261,30 @@ class AddCosTemplate extends React.Component {
                 hideBackButton: true,
                 enableNext: !this.state.adding,
             },
-            ...((this.props.definitionWizardEntryDn !== '') || (this.props.cosDefCreateMoreTemplate)
-                ? [
-                    {
-                        id: 8,
-                        name: this.props.cosDefCreateMoreTemplate ? 'Create More Templates' : 'Back to CoS Definition',
-                        component: entryReviewStep,
-                        nextButtonText: 'Finish',
-                        canJumpTo: stepIdReached >= 7 && stepIdReached < 8,
-                        hideBackButton: true,
-                    },
-                ]
-                : []),
+            ...((this.props.definitionWizardEntryDn !== '') || (this.props.cosDefCreateMoreTemplate) ? [
+                {
+                    id: 8,
+                    name: this.props.cosDefCreateMoreTemplate ? 'Create More Templates' : 'Back to CoS Definition',
+                    component: entryReviewStep,
+                    nextButtonText: 'Finish',
+                    canJumpTo: stepIdReached >= 7 && stepIdReached < 8,
+                    hideBackButton: true,
+                },
+            ] : []),
         ];
 
-        const title = (
-            <>
-                Parent DN: &nbsp;&nbsp;<strong>{this.props.wizardEntryDn}</strong>
-            </>
-        );
+        const title = <>
+            Parent DN: &nbsp;&nbsp;<strong>{this.props.wizardEntryDn}</strong>
+        </>;
 
         return (
             <Wizard
                 isOpen={this.props.isWizardOpen}
-                onClose={this.handleToggleOpenWizard}
+                onClose={this.toggleOpenWizard}
                 steps={addEntrySteps}
                 title="Add CoS Template"
                 description={title}
-                onNext={this.handleNext}
+                onNext={this.onNext}
             />
         );
     }

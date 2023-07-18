@@ -3,9 +3,11 @@ import {
     Alert,
     BadgeToggle,
     Bullseye,
-    Card, CardBody, CardTitle,
+    Button,
+    Card, CardHeader, CardBody, CardTitle,
     Dropdown, DropdownItem, DropdownPosition,
     Grid, GridItem,
+    Label, LabelGroup,
     Pagination,
     SearchInput,
     SimpleList, SimpleListItem,
@@ -20,11 +22,20 @@ import {
     headerCol,
 } from '@patternfly/react-table';
 import {
+    b64DecodeUnicode,
     createLdapEntry,
+    foldLine,
     generateUniqueId,
+    getBaseLevelEntryAttributes,
+    getRdnInfo,
     getSingleValuedAttributes,
 } from '../../lib/utils.jsx';
 import EditableTable from '../../lib/editableTable.jsx';
+import {
+    LDAP_OPERATIONS,
+    BINARY_ATTRIBUTES,
+    LDIF_MAX_CHAR_PER_LINE
+} from '../../lib/constants.jsx';
 
 class AddLdapEntry extends React.Component {
     constructor (props) {
@@ -85,7 +96,7 @@ class AddLdapEntry extends React.Component {
             searchAttrValue: "",
         };
 
-        this.handleNext = ({ id }) => {
+        this.onNext = ({ id }) => {
             this.setState({
                 stepIdReached: this.state.stepIdReached < id ? id : this.state.stepIdReached
             });
@@ -104,30 +115,31 @@ class AddLdapEntry extends React.Component {
             } else if (id === 6) {
                 // Create the LDAP entry.
                 createLdapEntry(this.props.editorLdapServer,
-                                this.state.ldifArray,
-                                (result) => {
-                                    this.setState({
-                                        commandOutput: result.errorCode === 0 ? 'Successfully added entry!' : 'Failed to add entry, error: ' + result.errorCode,
-                                        resultVariant: result.errorCode === 0 ? 'success' : 'danger',
-                                        adding: false,
-                                    }, () => { this.props.onReload() });
+                    this.state.ldifArray,
+                    (result) => {
+                        this.setState({
+                            commandOutput: result.output,
+                            commandOutput: result.errorCode === 0 ? 'Successfully added entry!' : 'Failed to add entry, error: ' + result.errorCode ,
+                            resultVariant: result.errorCode === 0 ? 'success' : 'danger',
+                            adding: false,
+                        }, () => { this.props.onReload() });
 
-                                    const myDn = this.state.ldifArray[0].substring(4);
-                                    const opInfo = {
-                                        operationType: 'ADD',
-                                        resultCode: result.errorCode,
-                                        time: Date.now(),
-                                        entryDn: myDn,
-                                        relativeDn: this.state.namingAttrVal
-                                    };
-                                    this.props.setWizardOperationInfo(opInfo);
-                                }
+                        const myDn = this.state.ldifArray[0].substring(4);
+                        const opInfo = {
+                            operationType: 'ADD',
+                            resultCode: result.errorCode,
+                            time: Date.now(),
+                            entryDn: myDn,
+                            relativeDn: this.state.namingAttrVal
+                        }
+                        this.props.setWizardOperationInfo(opInfo);
+                    }
                 );
             }
         };
 
         this.cleanUpEntry = () => {
-            const newRows = [];
+            let newRows = [];
             let validMods = true;
             for (const row of this.state.editableTableData) {
                 const attr = row.attr.toLowerCase();
@@ -143,11 +155,11 @@ class AddLdapEntry extends React.Component {
                 editableTableData: newRows,
                 validMods,
             });
-        };
+        }
 
-        this.handleOCSearchChange = (event, value) => {
+        this.onOCSearchChange = (value, event) => {
             let ocRows = [];
-            const allOCs = [];
+            let allOCs = [];
             const val = value.toLowerCase();
 
             // Get fresh list of Objectclasses andwhat is selected
@@ -171,10 +183,9 @@ class AddLdapEntry extends React.Component {
                             oc.required.join(', '),
                             oc.optional.join(', '),
                         ],
-                        selected,
+                        selected: selected,
                         disableSelection: selectionDisabled
                     });
-                return [];
             });
 
             // Process search filter on the entire list
@@ -198,11 +209,11 @@ class AddLdapEntry extends React.Component {
                 searchOCValue: value,
                 itemCountOc: ocRows.length,
             });
-        };
+        }
 
-        this.handleAttrSearchChange = (event, value) => {
+        this.onAttrSearchChange = (value, event) => {
             let attrRows = [];
-            const allAttrs = this.state.rowsAttrOrig;
+            let allAttrs = this.state.rowsAttrOrig;
             const val = value.toLowerCase();
 
             // Process search filter on the entire list
@@ -224,7 +235,7 @@ class AddLdapEntry extends React.Component {
                 itemCountAttr: attrRows.length,
                 searchAttrValue: value
             });
-        };
+        }
         // End constructor().
     }
 
@@ -234,7 +245,7 @@ class AddLdapEntry extends React.Component {
 
     isAttributeRequired = attr => {
         return this.requiredAttributes.includes(attr);
-    };
+    }
 
     enableNextStep = (yes) => {
         this.setState({
@@ -263,14 +274,14 @@ class AddLdapEntry extends React.Component {
             namingVal,
             namingAttrVal,
         });
-    };
+    }
 
     componentDidMount () {
         const ocArray = [];
         getSingleValuedAttributes(this.props.editorLdapServer,
-                                  (myAttrs) => {
-                                      this.singleValuedAttributes = [...myAttrs];
-                                  });
+            (myAttrs) => {
+                this.singleValuedAttributes = [...myAttrs];
+        });
 
         this.props.allObjectclasses.map(oc => {
             let selectionDisabled = false;
@@ -288,7 +299,6 @@ class AddLdapEntry extends React.Component {
                     selected: false,
                     disableSelection: selectionDisabled
                 });
-            return [];
         });
 
         this.setState({
@@ -299,21 +309,21 @@ class AddLdapEntry extends React.Component {
         });
     }
 
-    handleSetPageOc = (_event, pageNumber) => {
+    onSetPageOc = (_event, pageNumber) => {
         this.setState({
             pageOc: pageNumber,
             pagedRowsOc: this.getItemsToShow(pageNumber, this.state.perPageOc, 'ObjectClassTable')
         });
     };
 
-    handleSetPageAttr = (_event, pageNumber) => {
+    onSetPageAttr = (_event, pageNumber) => {
         this.setState({
             pageAttr: pageNumber,
             pagedRowsAttr: this.getItemsToShow(pageNumber, this.state.perPageAttr, 'AttributeTable')
         });
     };
 
-    handlePerPageSelectOc = (_event, perPage) => {
+    onPerPageSelectOc = (_event, perPage) => {
         this.setState({
             pageOc: 1,
             perPageOc: perPage,
@@ -321,7 +331,7 @@ class AddLdapEntry extends React.Component {
         });
     };
 
-    handlePerPageSelectAttr = (_event, perPage) => {
+    onPerPageSelectAttr = (_event, perPage) => {
         this.setState({
             pageAttr: 1,
             perPageAttr: perPage,
@@ -340,7 +350,7 @@ class AddLdapEntry extends React.Component {
         return newRows;
     }
 
-    handleSelectOc = (event, isSelected, rowId) => {
+    onSelectOc = (event, isSelected, rowId) => {
         // Process only the entries in the current page ( pagedRowsOc )
         const rows = [...this.state.pagedRowsOc];
         rows[rowId].selected = isSelected;
@@ -361,20 +371,16 @@ class AddLdapEntry extends React.Component {
             selectedObjectClasses = selectedObjectClasses.filter(row => (row.cells[0] !== allItems[index].cells[0]));
         }
 
-        const attrsToRemove = [];
+        let attrsToRemove = [];
         if (!isSelected) {
             // Removing an objectclass, this will impact the entry as we might have to remove attributes
-            let ocAttrs = allItems[index].cells[1].toLowerCase().replace(/\s/g, '')
-                    .split(',');
-            ocAttrs = ocAttrs.concat(allItems[index].cells[2].toLowerCase().replace(/\s/g, '')
-                    .split(','));
+            let ocAttrs = allItems[index].cells[1].toLowerCase().replace(/\s/g, '').split(',');
+            ocAttrs = ocAttrs.concat(allItems[index].cells[2].toLowerCase().replace(/\s/g, '').split(','));
             let currAttrs = [];
             for (const oc of selectedObjectClasses) {
                 // Gather all the allowed attributes
-                currAttrs = currAttrs.concat(oc.cells[1].toLowerCase().replace(/\s/g, '')
-                        .split(','));
-                currAttrs = currAttrs.concat(oc.cells[2].toLowerCase().replace(/\s/g, '')
-                        .split(','));
+                currAttrs = currAttrs.concat(oc.cells[1].toLowerCase().replace(/\s/g, '').split(','));
+                currAttrs = currAttrs.concat(oc.cells[2].toLowerCase().replace(/\s/g, '').split(','));
             }
 
             for (const attr of ocAttrs) {
@@ -395,8 +401,9 @@ class AddLdapEntry extends React.Component {
         });
     };
 
-    handleSelectAttr = (event, isSelected, rowId) => {
+    onSelectAttr = (event, isSelected, rowId) => {
         let newEditableData = this.state.editableTableData;
+        let rows;
 
         // Quick hack until the code is upgraded to a version that supports "disableCheckbox"
         if (this.state.pagedRowsAttr[rowId].disableCheckbox === true) {
@@ -404,32 +411,32 @@ class AddLdapEntry extends React.Component {
         } // End hack.
 
         // Process only the entries in the current page ( pagedRowsAttr )
-        const rows = [...this.state.pagedRowsAttr];
+        rows = [...this.state.pagedRowsAttr];
         rows[rowId].selected = isSelected;
 
         // Find the entry in the full array and set 'isAttributeSelected' accordingly
         // The property 'isAttributeSelected' is used to build the LDAP entry to add.
         // The row ID cannot be used since it changes with the pagination.
-        const attrName = rows[rowId].cells[0];
-        const allItems = [...this.state.rowsAttrOrig];
+        const attrName = this.state.pagedRowsAttr[rowId].cells[0];
+        let allItems = [...this.state.rowsAttrOrig];
         const index = allItems.findIndex(item => item.cells[0] === attrName);
         allItems[index].isAttributeSelected = isSelected;
         const selectedAttributes = allItems
-                .filter(item => item.isAttributeSelected)
-                .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]);
+            .filter(item => item.isAttributeSelected)
+            .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]);
 
         // Update the table rows as needed
         const rowAttr = rows[rowId].attributeName.toLowerCase();
         const found = this.state.editableTableData.filter(item => (item.attr.toLowerCase() === rowAttr));
         if (isSelected) {
             if (found.length === 0 && rowAttr !== 'objectclass') {
-                const obj = {};
+                let obj = {};
                 obj.id = generateUniqueId();
                 obj.attr = rows[rowId].attributeName;
                 obj.val = "";
                 obj.namingAttr = false;
                 obj.required = false;
-                newEditableData = [...newEditableData, obj];
+                newEditableData =  [...newEditableData, obj]
             }
         } else if (found.length > 0) {
             // Remove the row if present
@@ -439,7 +446,7 @@ class AddLdapEntry extends React.Component {
         let validMods = true;
         for (const row of newEditableData) {
             if (row.val === "") {
-                validMods = false;
+                validMods = false
             }
         }
 
@@ -454,12 +461,13 @@ class AddLdapEntry extends React.Component {
 
     updateAttributeTableRows = () => {
         const ocToProcess = [...this.state.selectedObjectClasses];
-        const rowsAttr = [];
-        const attrList = [];
+        let rowsAttr = [];
+        let attrList = [];
         let namingRowID = this.state.namingRowID;
         let namingAttr = this.state.namingAttr;
+        let isNamingAttr = false;
 
-        for (const oc of ocToProcess) {
+        for (let oc of ocToProcess) {
             // Rebuild the attribute arrays.
             const required = oc.cells[1].split(',');
             const optional = oc.cells[2].split(',');
@@ -497,9 +505,10 @@ class AddLdapEntry extends React.Component {
                     if (namingRowID === -1) {
                         namingRowID = new_id;
                         namingAttr = attr;
+                        isNamingAttr = true;
                     }
 
-                    const obj = {};
+                    let obj = {};
                     obj.id = new_id;
                     obj.attr = attr;
                     obj.val = "";
@@ -509,8 +518,8 @@ class AddLdapEntry extends React.Component {
                     this.setState(prevState => ({
                         editableTableData: [...prevState.editableTableData, obj],
                         validMods: false,
-                        namingRowID,
-                        namingAttr,
+                        namingRowID: namingRowID,
+                        namingAttr: namingAttr,
                     }));
                 }
             }
@@ -533,7 +542,7 @@ class AddLdapEntry extends React.Component {
                     rowsAttr.push({
                         attributeName: attr,
                         isAttributeSelected: selected,
-                        selected,
+                        selected: selected,
                         cells: [attr, oc.cells[0]]
                     });
                 }
@@ -541,19 +550,19 @@ class AddLdapEntry extends React.Component {
         }
 
         // Update the rows where user can select the attributes.
-        rowsAttr.sort((a, b) => (a.attributeName > b.attributeName) ? 1 : -1);
+        rowsAttr.sort((a, b) => (a.attributeName > b.attributeName) ? 1 : -1)
         this.setState({
             rowsAttr,
             rowsAttrOrig: [...rowsAttr],
             selectedAttributes: rowsAttr.filter(item => item.isAttributeSelected)
-                    .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]),
+                .map(attrObj => [attrObj.attributeName, attrObj.cells[1]]),
             itemCountAttr: rowsAttr.length,
         }, () => {
             // getItemsToShow() expects rowAttrs to be updated already, so we
             // have to do this callback
             this.setState({
                 pagedRowsAttr: this.getItemsToShow(this.state.pageAttr, this.state.perPageAttr,
-                                                   'AttributeTable')
+                'AttributeTable')
             });
         });
     };
@@ -562,7 +571,7 @@ class AddLdapEntry extends React.Component {
         const objectClassData = ['top'];
         const attribute = this.state.namingAttr;
         const value = this.state.namingVal;
-        const valueData = [];
+        let valueData = [];
 
         for (const oc of this.state.selectedObjectClasses) {
             if (oc && !objectClassData.includes(oc.cells[0])) {
@@ -580,11 +589,11 @@ class AddLdapEntry extends React.Component {
             dnLine,
             ...ocArray,
             ...valueData
-        ];
+        ]
 
         // Hide userpassword value
-        const cleanLdifArray = [...ldifArray];
-        for (const idx in cleanLdifArray) {
+        let cleanLdifArray = [...ldifArray];
+        for (let idx in cleanLdifArray) {
             if (cleanLdifArray[idx].toLowerCase().startsWith("userpassword")) {
                 cleanLdifArray[idx] = "userpassword: ********";
                 break;
@@ -595,34 +604,35 @@ class AddLdapEntry extends React.Component {
             ldifArray,
             cleanLdifArray
         });
-    };
 
-    handleOCDropDownToggle = isOpen => {
+    }
+
+    onOCDropDownToggle = isOpen => {
         this.setState({
             isOCDropDownOpen: isOpen
         });
     };
 
-    handleOCDropDownSelect = event => {
+    onOCDropDownSelect = event => {
         this.setState((prevState, props) => {
             return { isOCDropDownOpen: !prevState.isOCDropDownOpen };
         });
     };
 
-    buildOCDropdown = () => {
+    buildOCDropdown= () => {
         const { isOCDropDownOpen, selectedObjectClasses } = this.state;
         const numSelected = this.state.rowsOc.filter(item => item.selected).length;
-        const items = selectedObjectClasses.map((oc) =>
+        const items = this.state.selectedObjectClasses.map((oc) =>
             <DropdownItem key={oc.cells[0]}>{oc.cells[0]}</DropdownItem>
         );
 
         return (
             <Dropdown
                 className="ds-dropdown-padding"
-                onSelect={this.handleOCDropDownSelect}
+                onSelect={this.onOCDropDownSelect}
                 position={DropdownPosition.left}
                 toggle={
-                    <BadgeToggle id="toggle-oc-select" onToggle={this.handleOCDropDownToggle}>
+                    <BadgeToggle id="toggle-oc-select" onToggle={this.onOCDropDownToggle}>
                         {numSelected !== 0 ? <>{numSelected} selected </> : <>0 selected </>}
                     </BadgeToggle>
                 }
@@ -630,15 +640,15 @@ class AddLdapEntry extends React.Component {
                 dropdownItems={items}
             />
         );
-    };
+    }
 
-    handleAttrDropDownToggle = isOpen => {
+    onAttrDropDownToggle = isOpen => {
         this.setState({
             isAttrDropDownOpen: isOpen
         });
     };
 
-    handleAttrDropDownSelect = event => {
+    onAttrDropDownSelect = event => {
         this.setState((prevState, props) => {
             return { isAttrDropDownOpen: !prevState.isAttrDropDownOpen };
         });
@@ -654,10 +664,10 @@ class AddLdapEntry extends React.Component {
         return (
             <Dropdown
                 className="ds-dropdown-padding"
-                onSelect={this.handleAttrDropDownSelect}
+                onSelect={this.onAttrDropDownSelect}
                 position={DropdownPosition.left}
                 toggle={
-                    <BadgeToggle id="toggle-attr-select" onToggle={this.handleAttrDropDownToggle}>
+                    <BadgeToggle id="toggle-attr-select" onToggle={this.onAttrDropDownToggle}>
                         {numSelected !== 0 ? <>{numSelected} selected </> : <>0 selected </>}
                     </BadgeToggle>
                 }
@@ -665,13 +675,13 @@ class AddLdapEntry extends React.Component {
                 dropdownItems={items}
             />
         );
-    };
+    }
 
     setNamingRowID = (namingRowID) => {
         let namingAttrVal = "";
         let namingAttr = "";
         let namingVal = "";
-        const rows = this.state.editableTableData;
+        let rows = this.state.editableTableData;
 
         for (const row of rows) {
             if (row.id === namingRowID) {
@@ -690,14 +700,35 @@ class AddLdapEntry extends React.Component {
         });
     };
 
+
     render () {
         const {
             loading, itemCountOc, pageOc, perPageOc, columnsOc, pagedRowsOc,
             itemCountAttr, pageAttr, perPageAttr, columnsAttr, pagedRowsAttr,
-            commandOutput, namingAttr, namingVal, stepIdReached, ldifArray,
-            resultVariant, editableTableData, validMods, cleanLdifArray,
-            selectedAttributes, selectedObjectClasses
+            commandOutput, namingAttr, namingVal, stepIdReached,
+            itemCount, pageAddUser, perPageAddUser, ldifArray, statementRows,
+            resultVariant, editableTableData, numOfChanges, validMods,
+            cleanLdifArray, selectedAttributes, selectedObjectClasses
         } = this.state;
+
+        const loadingStateRows = [{
+            heightAuto: true,
+            cells: [
+                {
+                    props: { colSpan: 8 },
+                    title: (
+                        <Bullseye key="add-entry-bulleye" >
+                            <Title headingLevel="h2" size="lg" key="loading-title" >
+                                Loading...
+                            </Title>
+                            <center><Spinner size="xl" key="loading-spinner" /></center>
+                        </Bullseye>
+                    )
+                },
+                'Loading...',
+                'Loading...'
+            ]
+        }];
 
         const objectClassStep = (
             <>
@@ -711,13 +742,14 @@ class AddLdapEntry extends React.Component {
                 </div>
                 { loading &&
                     <div>
-                        <Bullseye className="ds-margin-top-xlg" key="add-entry-bulleye">
+                        <Bullseye className="ds-margin-top-xlg" key="add-entry-bulleye" >
                             <Title headingLevel="h3" size="lg" key="loading-title">
                                 Loading ObjectClasses ...
                             </Title>
                         </Bullseye>
                         <Spinner className="ds-center" size="lg" key="loading-spinner" />
-                    </div>}
+                    </div>
+                }
                 <div className={loading ? "ds-hidden" : ""}>
                     <Grid className="ds-margin-top-lg">
                         <GridItem span={5}>
@@ -725,8 +757,8 @@ class AddLdapEntry extends React.Component {
                                 className="ds-font-size-md"
                                 placeholder='Search Objectclasses'
                                 value={this.state.searchOCValue}
-                                onChange={this.handleOCSearchChange}
-                                onClear={(evt, val) => this.handleOCSearchChange(evt, '')}
+                                onChange={this.onOCSearchChange}
+                                onClear={(evt) => this.onOCSearchChange('', evt)}
                             />
                         </GridItem>
                         <GridItem span={7}>
@@ -735,9 +767,9 @@ class AddLdapEntry extends React.Component {
                                 itemCount={itemCountOc}
                                 page={pageOc}
                                 perPage={perPageOc}
-                                onSetPage={this.handleSetPageOc}
+                                onSetPage={this.onSetPageOc}
                                 widgetId="pagination-step-objectclass"
-                                onPerPageSelect={this.handlePerPageSelectOc}
+                                onPerPageSelect={this.onPerPageSelectOc}
                                 variant="top"
                                 isCompact
                             />
@@ -747,7 +779,7 @@ class AddLdapEntry extends React.Component {
                         cells={columnsOc}
                         rows={pagedRowsOc}
                         canSelectAll={false}
-                        onSelect={this.handleSelectOc}
+                        onSelect={this.onSelectOc}
                         variant={TableVariant.compact}
                         aria-label="Pagination All ObjectClasses"
                     >
@@ -774,8 +806,8 @@ class AddLdapEntry extends React.Component {
                             className="ds-font-size-md"
                             placeholder='Search Attributes'
                             value={this.state.searchAttrValue}
-                            onChange={this.handleAttrSearchChange}
-                            onClear={(evt, val) => this.handleAttrSearchChange(evt, '')}
+                            onChange={this.onAttrSearchChange}
+                            onClear={(evt) => this.onAttrSearchChange('', evt)}
                         />
                     </GridItem>
                     <GridItem span={7}>
@@ -783,9 +815,9 @@ class AddLdapEntry extends React.Component {
                             itemCount={itemCountAttr}
                             page={pageAttr}
                             perPage={perPageAttr}
-                            onSetPage={this.handleSetPageAttr}
+                            onSetPage={this.onSetPageAttr}
                             widgetId="pagination-step-attributes"
-                            onPerPageSelect={this.handlePerPageSelectAttr}
+                            onPerPageSelect={this.onPerPageSelectAttr}
                             isCompact
                         />
                     </GridItem>
@@ -794,7 +826,7 @@ class AddLdapEntry extends React.Component {
                     className="ds-margin-top"
                     cells={columnsAttr}
                     rows={pagedRowsAttr}
-                    onSelect={this.handleSelectAttr}
+                    onSelect={this.onSelectAttr}
                     variant={TableVariant.compact}
                     aria-label="Pagination Attributes"
                     canSelectAll={false}
@@ -815,7 +847,7 @@ class AddLdapEntry extends React.Component {
                     isInline
                     title={myTitle}
                 >
-                    <b>Entry DN:&nbsp;&nbsp;&nbsp;</b>{(namingAttr || "??????")}={namingVal || "??????"},{this.props.wizardEntryDn}
+                    <b>Entry DN:&nbsp;&nbsp;&nbsp;</b>{(namingAttr ? namingAttr : "??????")}={namingVal ? namingVal : "??????"},{this.props.wizardEntryDn}
                 </Alert>
                 <TextContent className="ds-margin-top">
                     <Text component={TextVariants.h3}>
@@ -858,7 +890,8 @@ class AddLdapEntry extends React.Component {
                         { (ldifListItems.length > 0) &&
                             <SimpleList aria-label="LDIF data User">
                                 {ldifListItems}
-                            </SimpleList>}
+                            </SimpleList>
+                        }
                     </CardBody>
                 </Card>
             </div>
@@ -883,7 +916,8 @@ class AddLdapEntry extends React.Component {
                             <div>
                                 <Spinner className="ds-left-margin" size="md" />
                                 &nbsp;&nbsp;Adding entry ...
-                            </div>}
+                            </div>
+                        }
                     </Alert>
                 </div>
                 {resultVariant === 'danger' &&
@@ -894,7 +928,8 @@ class AddLdapEntry extends React.Component {
                                 <h6 key={line.id}>{line.data}</h6>
                             ))}
                         </CardBody>
-                    </Card>}
+                    </Card>
+                }
             </div>
         );
 
@@ -945,20 +980,18 @@ class AddLdapEntry extends React.Component {
             }
         ];
 
-        const title = (
-            <>
-                Parent DN: &nbsp;&nbsp;<strong>{this.props.wizardEntryDn}</strong>
-            </>
-        );
+        const title = <>
+            Parent DN: &nbsp;&nbsp;<strong>{this.props.wizardEntryDn}</strong>
+        </>;
 
         return (
             <Wizard
                 isOpen={this.props.isWizardOpen}
-                onClose={this.props.handleToggleWizard}
+                onClose={this.props.toggleOpenWizard}
                 steps={addEntrySteps}
                 title="Add An LDAP Entry"
                 description={title}
-                onNext={this.handleNext}
+                onNext={this.onNext}
             />
         );
     }

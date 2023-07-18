@@ -1,5 +1,5 @@
 # --- BEGIN COPYRIGHT BLOCK ---
-# Copyright (C) 2023 Red Hat, Inc.
+# Copyright (C) 2020 Red Hat, Inc.
 # All rights reserved.
 #
 # License: GPL (version 3 or any later version).
@@ -22,9 +22,7 @@ from lib389._constants import *
 from lib389 import Entry
 from lib389._mapped_object import DSLdapObject
 from lib389.utils import ensure_bytes, selinux_label_port,  selinux_present
-from lib389.lint import (
-    DSCLE0001, DSCLE0002, DSCLE0003, DSCLE0004, DSCLE0005, DSELE0001
-)
+from lib389.lint import DSCLE0001, DSCLE0002, DSELE0001
 
 class Config(DSLdapObject):
     """
@@ -212,52 +210,13 @@ class Config(DSLdapObject):
             yield report
 
     def _lint_passwordscheme(self):
-        allowed_schemes = ['PBKDF2-SHA512', 'PBKDF2_SHA256', 'PBKDF2_SHA512', 'GOST_YESCRYPT']
+        allowed_schemes = ['SSHA512', 'PBKDF2-SHA512', 'GOST_YESCRYPT']
         u_password_scheme = self.get_attr_val_utf8('passwordStorageScheme')
         u_root_scheme = self.get_attr_val_utf8('nsslapd-rootpwstoragescheme')
-        if u_root_scheme not in allowed_schemes:
+        if u_root_scheme not in allowed_schemes or u_password_scheme not in allowed_schemes:
             report = copy.deepcopy(DSCLE0002)
-            report['detail'] = report['detail'].replace('SCHEME', u_root_scheme)
-            report['detail'] = report['detail'].replace('CONFIG', 'nsslapd-rootpwstoragescheme')
             report['fix'] = report['fix'].replace('YOUR_INSTANCE', self._instance.serverid)
-            report['fix'] = report['fix'].replace('CONFIG', 'nsslapd-rootpwstoragescheme')
             report['check'] = "config:passwordscheme"
-            yield report
-        if u_password_scheme not in allowed_schemes:
-            report = copy.deepcopy(DSCLE0002)
-            report['detail'] = report['detail'].replace('SCHEME', u_password_scheme)
-            report['detail'] = report['detail'].replace('CONFIG', 'passwordStorageScheme')
-            report['fix'] = report['fix'].replace('YOUR_INSTANCE', self._instance.serverid)
-            report['fix'] = report['fix'].replace('CONFIG', 'passwordStorageScheme')
-            report['check'] = "config:passwordscheme"
-            yield report
-
-    def _lint_unauth_binds(self):
-        # Allow unauthenticated binds
-        unauthbinds = self.get_attr_val_utf8_l('nsslapd-allow-unauthenticated-binds')
-        if unauthbinds == "on":
-            report = copy.deepcopy(DSCLE0003)
-            report['fix'] = report['fix'].replace('YOUR_INSTANCE', self._instance.serverid)
-            report['check'] = "config:unauthorizedbinds"
-            yield report
-
-    def _lint_accesslog_buffering(self):
-        # access log buffering
-        buffering = self.get_attr_val_utf8_l('nsslapd-accesslog-logbuffering')
-        if buffering == "off":
-            report = copy.deepcopy(DSCLE0004)
-            report['fix'] = report['fix'].replace('YOUR_INSTANCE', self._instance.serverid)
-            report['check'] = "config:accesslogbuffering"
-            yield report
-
-
-    def _lint_securitylog_buffering(self):
-        # security log buffering
-        buffering = self.get_attr_val_utf8_l('nsslapd-securitylog-logbuffering')
-        if buffering == "off":
-            report = copy.deepcopy(DSCLE0005)
-            report['fix'] = report['fix'].replace('YOUR_INSTANCE', self._instance.serverid)
-            report['check'] = "config:securitylogbuffering"
             yield report
 
     def disable_plaintext_port(self):

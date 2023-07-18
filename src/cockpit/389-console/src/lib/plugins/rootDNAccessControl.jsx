@@ -77,7 +77,7 @@ class RootDNAccessControl extends React.Component {
         };
 
         // Allow Host
-        this.handleAllowHostSelect = (event, selection) => {
+        this.onAllowHostSelect = (event, selection) => {
             if (this.state.allowHost.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -94,18 +94,18 @@ class RootDNAccessControl extends React.Component {
                 );
             }
         };
-        this.handleAllowHostToggle = isAllowHostOpen => {
+        this.onAllowHostToggle = isAllowHostOpen => {
             this.setState({
                 isAllowHostOpen
             });
         };
-        this.handleAllowHostClear = () => {
+        this.onAllowHostClear = () => {
             this.setState({
                 allowHost: [],
                 isAllowHostOpen: false
             });
         };
-        this.handleAllowHostCreateOption = newValue => {
+        this.onAllowHostCreateOption = newValue => {
             if (!this.state.allowHostOptions.includes(newValue)) {
                 this.setState({
                     allowHostOptions: [...this.state.allowHostOptions, newValue],
@@ -115,7 +115,7 @@ class RootDNAccessControl extends React.Component {
         };
 
         // Deny Host
-        this.handleDenyHostSelect = (event, selection) => {
+        this.onDenyHostSelect = (event, selection) => {
             if (this.state.denyHost.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -132,18 +132,18 @@ class RootDNAccessControl extends React.Component {
                 );
             }
         };
-        this.handleDenyHostToggle = isDenyHostOpen => {
+        this.onDenyHostToggle = isDenyHostOpen => {
             this.setState({
                 isDenyHostOpen
             });
         };
-        this.handleDenyHostClear = () => {
+        this.onDenyHostClear = () => {
             this.setState({
                 denyHost: [],
                 isDenyHostOpen: false
             });
         };
-        this.handleDenyHostCreateOption = newValue => {
+        this.onDenyHostCreateOption = newValue => {
             if (!this.state.denyHostOptions.includes(newValue)) {
                 this.setState({
                     denyHostOptions: [...this.state.denyHostOptions, newValue],
@@ -153,7 +153,7 @@ class RootDNAccessControl extends React.Component {
         };
 
         // Allow IP Adddress
-        this.handleAllowIPSelect = (event, selection) => {
+        this.onAllowIPSelect = (event, selection) => {
             if (this.state.allowIP.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -170,18 +170,18 @@ class RootDNAccessControl extends React.Component {
                 );
             }
         };
-        this.handleAllowIPToggle = isAllowIPOpen => {
+        this.onAllowIPToggle = isAllowIPOpen => {
             this.setState({
                 isAllowIPOpen
             });
         };
-        this.handleAllowIPClear = () => {
+        this.onAllowIPClear = () => {
             this.setState({
                 allowIP: [],
                 isAllowIPOpen: false
             });
         };
-        this.handleAllowIPCreateOption = newValue => {
+        this.onAllowIPCreateOption = newValue => {
             if (!this.state.allowIPOptions.includes(newValue)) {
                 this.setState({
                     allowIPOptions: [...this.state.allowIPOptions, newValue],
@@ -191,7 +191,7 @@ class RootDNAccessControl extends React.Component {
         };
 
         // Deny IP Adddress
-        this.handleDenyIPSelect = (event, selection) => {
+        this.onDenyIPSelect = (event, selection) => {
             if (this.state.denyIP.includes(selection)) {
                 this.setState(
                     (prevState) => ({
@@ -208,18 +208,18 @@ class RootDNAccessControl extends React.Component {
                 );
             }
         };
-        this.handleDenyIPToggle = isDenyIPOpen => {
+        this.onDenyIPToggle = isDenyIPOpen => {
             this.setState({
                 isDenyIPOpen
             });
         };
-        this.handleDenyIPClear = () => {
+        this.onDenyIPClear = () => {
             this.setState({
                 denyIP: [],
                 isDenyIPOpen: false
             });
         };
-        this.handleDenyIPCreateOption = newValue => {
+        this.onDenyIPCreateOption = newValue => {
             if (!this.state.denyIPOptions.includes(newValue)) {
                 this.setState({
                     denyIPOptions: [...this.state.denyIPOptions, newValue],
@@ -230,7 +230,7 @@ class RootDNAccessControl extends React.Component {
 
         this.handleFieldChange = this.handleFieldChange.bind(this);
         this.handleTimeChange = this.handleTimeChange.bind(this);
-        this.handleSavePlugin = this.handleSavePlugin.bind(this);
+        this.savePlugin = this.savePlugin.bind(this);
         this.updateFields = this.updateFields.bind(this);
         this.validate = this.validate.bind(this);
     }
@@ -272,7 +272,7 @@ class RootDNAccessControl extends React.Component {
                 'allowThu', 'allowFri', 'allowSat', 'allowSun'
             ];
             for (const check_attr of attrs) {
-                if (this.state[check_attr] !== this.state['_' + check_attr]) {
+                if (this.state[check_attr] != this.state['_' + check_attr]) {
                     all_good = true;
                     break;
                 }
@@ -354,9 +354,9 @@ class RootDNAccessControl extends React.Component {
             }
 
             this.setState({
-                openTime,
-                closeTime,
-                daysAllowed,
+                openTime: openTime,
+                closeTime: closeTime,
+                daysAllowed: daysAllowed,
                 denyIP: denyIPList,
                 allowIP: allowIPList,
                 denyHost: denyHostList,
@@ -379,7 +379,7 @@ class RootDNAccessControl extends React.Component {
         }
     }
 
-    handleSavePlugin() {
+    savePlugin() {
         // First builds the days allowed
         let daysAllowed = "";
         for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) {
@@ -407,7 +407,7 @@ class RootDNAccessControl extends React.Component {
 
         // Delete attributes if the user set an empty value to the field
         cmd = [...cmd, "--allow-host"];
-        if (this.state.allowHost.length !== 0) {
+        if (this.state.allowHost.length != 0) {
             for (const value of this.state.allowHost) {
                 cmd = [...cmd, value];
             }
@@ -415,7 +415,7 @@ class RootDNAccessControl extends React.Component {
             cmd = [...cmd, "delete"];
         }
         cmd = [...cmd, "--deny-host"];
-        if (this.state.denyHost.length !== 0) {
+        if (this.state.denyHost.length != 0) {
             for (const value of this.state.denyHost) {
                 cmd = [...cmd, value];
             }
@@ -423,7 +423,7 @@ class RootDNAccessControl extends React.Component {
             cmd = [...cmd, "delete"];
         }
         cmd = [...cmd, "--allow-ip"];
-        if (this.state.allowIP.length !== 0) {
+        if (this.state.allowIP.length != 0) {
             for (const value of this.state.allowIP) {
                 cmd = [...cmd, value];
             }
@@ -431,7 +431,7 @@ class RootDNAccessControl extends React.Component {
             cmd = [...cmd, "delete"];
         }
         cmd = [...cmd, "--allow-host"];
-        if (this.state.allowHost.length !== 0) {
+        if (this.state.allowHost.length != 0) {
             for (const value of this.state.allowHost) {
                 cmd = [...cmd, value];
             }
@@ -443,7 +443,7 @@ class RootDNAccessControl extends React.Component {
             saving: true
         });
 
-        log_cmd('handleSavePlugin', 'Update Root DN access control', cmd);
+        log_cmd('savePlugin', 'Update Root DN access control', cmd);
         cockpit
                 .spawn(cmd, { superuser: true, err: "message" })
                 .done(content => {
@@ -518,16 +518,16 @@ class RootDNAccessControl extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type a hostname "
-                                    onToggle={this.handleAllowHostToggle}
-                                    onSelect={this.handleAllowHostSelect}
-                                    onClear={this.handleAllowHostClear}
+                                    onToggle={this.onAllowHostToggle}
+                                    onSelect={this.onAllowHostSelect}
+                                    onClear={this.onAllowHostClear}
                                     selections={allowHost}
                                     isOpen={this.state.isAllowHostOpen}
                                     aria-labelledby="typeAhead-allow-host"
                                     placeholderText="Type a hostname ..."
                                     noResultsFoundText="There are no matching entries"
                                     isCreatable
-                                    onCreateOption={this.handleAllowHostCreateOption}
+                                    onCreateOption={this.onAllowHostCreateOption}
                                 >
                                     {this.state.allowHostOptions.map((host, index) => (
                                         <SelectOption
@@ -546,16 +546,16 @@ class RootDNAccessControl extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type a hostname "
-                                    onToggle={this.handleDenyHostToggle}
-                                    onSelect={this.handleDenyHostSelect}
-                                    onClear={this.handleDenyHostClear}
+                                    onToggle={this.onDenyHostToggle}
+                                    onSelect={this.onDenyHostSelect}
+                                    onClear={this.onDenyHostClear}
                                     selections={denyHost}
                                     isOpen={this.state.isDenyHostOpen}
                                     aria-labelledby="typeAhead-deny-host"
                                     placeholderText="Type a hostname ..."
                                     noResultsFoundText="There are no matching entries"
                                     isCreatable
-                                    onCreateOption={this.handleDenyHostCreateOption}
+                                    onCreateOption={this.onDenyHostCreateOption}
                                 >
                                     {this.state.denyHostOptions.map((host, index) => (
                                         <SelectOption
@@ -574,16 +574,16 @@ class RootDNAccessControl extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type an IP address"
-                                    onToggle={this.handleAllowIPToggle}
-                                    onSelect={this.handleAllowIPSelect}
-                                    onClear={this.handleAllowIPClear}
+                                    onToggle={this.onAllowIPToggle}
+                                    onSelect={this.onAllowIPSelect}
+                                    onClear={this.onAllowIPClear}
                                     selections={allowIP}
                                     isOpen={this.state.isAllowIPOpen}
                                     aria-labelledby="typeAhead-allow-ip"
                                     placeholderText="Type an IP address ..."
                                     noResultsFoundText="There are no matching entries"
                                     isCreatable
-                                    onCreateOption={this.handleAllowIPCreateOption}
+                                    onCreateOption={this.onAllowIPCreateOption}
                                 >
                                     {this.state.allowIPOptions.map((ip, index) => (
                                         <SelectOption
@@ -602,16 +602,16 @@ class RootDNAccessControl extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeaheadMulti}
                                     typeAheadAriaLabel="Type an IP address"
-                                    onToggle={this.handleDenyIPToggle}
-                                    onSelect={this.handleDenyIPSelect}
-                                    onClear={this.handleDenyIPClear}
+                                    onToggle={this.onDenyIPToggle}
+                                    onSelect={this.onDenyIPSelect}
+                                    onClear={this.onDenyIPClear}
                                     selections={denyIP}
                                     isOpen={this.state.isDenyIPOpen}
                                     aria-labelledby="typeAhead-deny-ip"
                                     placeholderText="Type an IP address ..."
                                     noResultsFoundText="There are no matching entries"
                                     isCreatable
-                                    onCreateOption={this.handleDenyIPCreateOption}
+                                    onCreateOption={this.onDenyIPCreateOption}
                                 >
                                     {this.state.denyIPOptions.map((ip, index) => (
                                         <SelectOption
@@ -746,7 +746,7 @@ class RootDNAccessControl extends React.Component {
                     <Button
                         className="ds-margin-top-lg"
                         variant="primary"
-                        onClick={this.handleSavePlugin}
+                        onClick={this.savePlugin}
                         isDisabled={saveBtnDisabled || saving}
                         isLoading={saving}
                         spinnerAriaValueText={saving ? "Saving" : undefined}

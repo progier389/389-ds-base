@@ -23,6 +23,10 @@ import {
 } from "@patternfly/react-core";
 import PropTypes from "prop-types";
 
+const edit_attrs = ['mrs', 'indexTypeEq', 'indexTypeSub',
+    'indexTypePres', 'indexTypeApprox',
+];
+
 export class SuffixIndexes extends React.Component {
     constructor (props) {
         super(props);
@@ -86,36 +90,36 @@ export class SuffixIndexes extends React.Component {
                 );
             }
         };
-        this.handleAttributeToggle = isAttributeOpen => {
+        this.onAttributeToggle = isAttributeOpen => {
             this.setState({
                 isAttributeOpen
             });
         };
-        this.handleAttributeClear = () => {
+        this.onAttributeClear = () => {
             this.setState({
                 indexName: [],
                 isAttributeOpen: false
             });
         };
 
-        this.handleMatchingruleAddToggle = isMatchingruleOpen => {
+        this.onMatchingruleAddToggle = isMatchingruleOpen => {
             this.setState({
                 isMatchingruleOpen
             });
         };
-        this.handleMatchingruleAddClear = () => {
+        this.onMatchingruleAddClear = () => {
             this.setState({
                 mrs: [],
                 isMatchingruleOpen: false
             });
         };
 
-        this.handleMatchingruleEditToggle = isMatchingruleOpen => {
+        this.onMatchingruleEditToggle = isMatchingruleOpen => {
             this.setState({
                 isMatchingruleOpen
             });
         };
-        this.handleMatchingruleEditClear = () => {
+        this.onMatchingruleEditClear = () => {
             this.setState({
                 mrs: [],
                 isMatchingruleOpen: false
@@ -123,7 +127,7 @@ export class SuffixIndexes extends React.Component {
         };
 
         this.loadIndexes = this.loadIndexes.bind(this);
-        this.handleShowIndexModal = this.handleShowIndexModal.bind(this);
+        this.showIndexModal = this.showIndexModal.bind(this);
         this.closeIndexModal = this.closeIndexModal.bind(this);
         this.handleChange = this.handleChange.bind(this);
         this.onSelectToggle = this.onSelectToggle.bind(this);
@@ -139,7 +143,7 @@ export class SuffixIndexes extends React.Component {
         this.showConfirmDeleteIndex = this.showConfirmDeleteIndex.bind(this);
         this.closeConfirmDeleteIndex = this.closeConfirmDeleteIndex.bind(this);
         this.validateSaveBtn = this.validateSaveBtn.bind(this);
-        this.handleMatchingruleSelect = this.handleMatchingruleSelect.bind(this);
+        this.onMatchingruleSelect = this.onMatchingruleSelect.bind(this);
     }
 
     componentDidMount () {
@@ -147,9 +151,7 @@ export class SuffixIndexes extends React.Component {
     }
 
     componentWillUnmount() {
-        this.setState({
-            _isMounted: false
-        });
+        this.state._isMounted = false;
     }
 
     loadIndexes () {
@@ -165,7 +167,7 @@ export class SuffixIndexes extends React.Component {
                     const mrContent = JSON.parse(content);
                     const mrs = [];
                     for (let i = 0; i < mrContent.items.length; i++) {
-                        if (mrContent.items[i].name[0] !== "") {
+                        if (mrContent.items[i].name[0] != "") {
                             mrs.push(mrContent.items[i].name[0]);
                         }
                     }
@@ -191,7 +193,7 @@ export class SuffixIndexes extends React.Component {
                                             const attrContent = JSON.parse(content);
                                             const attrs = [];
                                             for (const content of attrContent.items) {
-                                                if (indexList.indexOf(content.name[0]) === -1) {
+                                                if (indexList.indexOf(content.name[0]) == -1) {
                                                     // Attribute is not a current index, add it to the list
                                                     // of available attributes to index
                                                     attrs.push(content.name[0]);
@@ -226,7 +228,7 @@ export class SuffixIndexes extends React.Component {
     //
     // Index Modal functions
     //
-    handleShowIndexModal() {
+    showIndexModal() {
         this.setState({
             showIndexModal: true,
             errObj: {},
@@ -265,26 +267,26 @@ export class SuffixIndexes extends React.Component {
 
         // Check if a setting was changed, if so enable the save button
         for (const config_attr of check_attrs) {
-            if (this.state[config_attr] !== this.state['_' + config_attr]) {
+            if (this.state[config_attr] != this.state['_' + config_attr]) {
                 saveBtnDisabled = false;
                 break;
             }
         }
 
-        if (JSON.stringify(this.state._mrs) !== JSON.stringify(this.state.mrs)) {
+        if (JSON.stringify(this.state._mrs) != JSON.stringify(this.state.mrs)) {
             saveBtnDisabled = false;
         }
 
         // We must have at least one index type set
-        if ((!this.state.indexTypeEq && !this.state.indexTypeSub &&
-             !this.state.indexTypePres && !this.state.indexTypeApprox) ||
-            this.state.indexName.length === 0 || this.state.indexName[0] === "") {
+        if (!this.state.indexTypeEq && !this.state.indexTypeSub &&
+            !this.state.indexTypePres && !this.state.indexTypeApprox ||
+            (this.state.indexName.length === 0 || this.state.indexName[0] === "")) {
             // Must always have one index type
             saveBtnDisabled = true;
         }
 
         this.setState({
-            saveBtnDisabled,
+            saveBtnDisabled: saveBtnDisabled,
         });
     }
 
@@ -297,7 +299,7 @@ export class SuffixIndexes extends React.Component {
     }
 
     // Edit Matching Rules
-    handleMatchingruleSelect(event, selection) {
+    onMatchingruleSelect(event, selection) {
         const new_mrs = [...this.state.mrs];
         if (new_mrs.includes(selection)) {
             const index = new_mrs.indexOf(selection);
@@ -313,10 +315,10 @@ export class SuffixIndexes extends React.Component {
                 isMatchingruleOpen: false,
             }, () => { this.validateSaveBtn() });
         }
-    }
+    };
 
     saveIndex() {
-        const cmd = [
+        let cmd = [
             "dsconf", "-j", "ldapi://%2fvar%2frun%2fslapd-" + this.props.serverId + ".socket",
             "backend", "index", "add", "--attr=" + this.state.indexName[0],
             this.props.suffix,
@@ -463,7 +465,7 @@ export class SuffixIndexes extends React.Component {
     saveEditIndex() {
         const origMRS = this.state._mrs;
         const newMRS = this.state.mrs;
-        const cmd = [
+        let cmd = [
             "dsconf", "-j", "ldapi://%2fvar%2frun%2fslapd-" + this.props.serverId + ".socket",
             "backend", "index", "set", "--attr=" + this.state.indexName,
             this.props.suffix,
@@ -473,7 +475,7 @@ export class SuffixIndexes extends React.Component {
         for (const newMR of newMRS) {
             let found = false;
             for (const origMR of origMRS) {
-                if (origMR === newMR) {
+                if (origMR == newMR) {
                     found = true;
                     break;
                 }
@@ -486,7 +488,7 @@ export class SuffixIndexes extends React.Component {
         for (const origMR of origMRS) {
             let found = false;
             for (const newMR of newMRS) {
-                if (newMR === origMR) {
+                if (newMR == origMR) {
                     found = true;
                     break;
                 }
@@ -630,7 +632,7 @@ export class SuffixIndexes extends React.Component {
         this.setState({
             [toggleId]: isExpanded
         });
-    };
+    }
 
     onSelectClear = item => event => {
         switch (item) {
@@ -655,7 +657,7 @@ export class SuffixIndexes extends React.Component {
         default:
             break;
         }
-    };
+    }
 
     render() {
         return (
@@ -674,7 +676,7 @@ export class SuffixIndexes extends React.Component {
                             <Button
                                 variant="primary"
                                 type="button"
-                                onClick={this.handleShowIndexModal}
+                                onClick={this.showIndexModal}
                             >
                                 Add Index
                             </Button>
@@ -692,7 +694,7 @@ export class SuffixIndexes extends React.Component {
                 <AddIndexModal
                     showModal={this.state.showIndexModal}
                     closeHandler={this.closeIndexModal}
-                    handleChange={this.onChange}
+                    handleChange={this.handleChange}
                     saveHandler={this.saveIndex}
                     matchingRules={this.state.matchingRules}
                     attributes={this.state.attributes}
@@ -703,13 +705,13 @@ export class SuffixIndexes extends React.Component {
                     indexTypeSub={this.state.indexTypeSub}
                     indexTypeApprox={this.state.indexTypeApprox}
                     reindexOnAdd={this.state.reindexOnAdd}
-                    onAttributeSelect={this.handleAttributeSelect}
-                    onAttributeToggle={this.handleAttributeToggle}
-                    onAttributeClear={this.handleAttributeClear}
+                    onAttributeSelect={this.onAttributeSelect}
+                    onAttributeToggle={this.onAttributeToggle}
+                    onAttributeClear={this.onAttributeClear}
                     isAttributeOpen={this.state.isAttributeOpen}
-                    onMatchingruleSelect={this.handleMatchingruleSelect}
-                    onMatchingruleAddToggle={this.handleMatchingruleAddToggle}
-                    onMatchingruleAddClear={this.handleMatchingruleAddClear}
+                    onMatchingruleSelect={this.onMatchingruleSelect}
+                    onMatchingruleAddToggle={this.onMatchingruleAddToggle}
+                    onMatchingruleAddClear={this.onMatchingruleAddClear}
                     isMatchingruleOpen={this.state.isMatchingruleOpen}
                     saving={this.state.saving}
                     saveBtnDisabled={this.state.saveBtnDisabled}
@@ -717,7 +719,7 @@ export class SuffixIndexes extends React.Component {
                 <EditIndexModal
                     showModal={this.state.showEditIndexModal}
                     closeHandler={this.closeEditIndexModal}
-                    handleChange={this.onChange}
+                    handleChange={this.handleChange}
                     saveHandler={this.saveEditIndex}
                     types={this.state.types}
                     mrs={this.state.mrs}
@@ -728,9 +730,9 @@ export class SuffixIndexes extends React.Component {
                     indexTypeSub={this.state.indexTypeSub}
                     indexTypeApprox={this.state.indexTypeApprox}
                     reindexOnAdd={this.state.reindexOnAdd}
-                    onMatchingruleSelect={this.handleMatchingruleSelect}
-                    onMatchingruleEditToggle={this.handleMatchingruleEditToggle}
-                    onMatchingruleEditClear={this.handleMatchingruleEditClear}
+                    onMatchingruleSelect={this.onMatchingruleSelect}
+                    onMatchingruleEditToggle={this.onMatchingruleEditToggle}
+                    onMatchingruleEditClear={this.onMatchingruleEditClear}
                     isMatchingruleOpen={this.state.isMatchingruleOpen}
                     saving={this.state.saving}
                     saveBtnDisabled={this.state.saveBtnDisabled}
@@ -738,7 +740,7 @@ export class SuffixIndexes extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmReindex}
                     closeHandler={this.closeConfirmReindex}
-                    handleChange={this.onChange}
+                    handleChange={this.handleChange}
                     actionHandler={this.reindexIndex}
                     spinning={this.state.modalSpinning}
                     item={this.state.reindexAttrName}
@@ -751,7 +753,7 @@ export class SuffixIndexes extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmDeleteIndex}
                     closeHandler={this.closeConfirmDeleteIndex}
-                    handleChange={this.onChange}
+                    handleChange={this.handleChange}
                     actionHandler={this.deleteIndex}
                     spinning={this.state.modalSpinning}
                     item={this.state.deleteAttrName}
@@ -993,7 +995,7 @@ class EditIndexModal extends React.Component {
         }
 
         let attrTypes = "";
-        if (types !== "" && types.length > 0) {
+        if (types != "" && types.length > 0) {
             attrTypes = types.split(",").map(item => item.trim());
         }
 
@@ -1001,110 +1003,94 @@ class EditIndexModal extends React.Component {
         const availMR = matchingRules;
 
         // Default settings
-        let eq = (
-            <div>
-                <Checkbox
+        let eq = <div>
+            <Checkbox
                 id="indexTypeEq"
                 isChecked={this.props.indexTypeEq}
                 onChange={(checked, e) => {
                     handleChange(e);
                 }}
                 label="Equailty Indexing"
-                />
-            </div>
-        );
-        let pres = (
-            <div>
-                <Checkbox
+            />
+        </div>;
+        let pres = <div>
+            <Checkbox
                 id="indexTypePres"
                 isChecked={this.props.indexTypePres}
                 onChange={(checked, e) => {
                     handleChange(e);
                 }}
                 label="Presence Indexing"
-                />
-            </div>
-        );
-        let sub = (
-            <div>
-                <Checkbox
+            />
+        </div>;
+        let sub = <div>
+            <Checkbox
                 id="indexTypeSub"
                 isChecked={this.props.indexTypeSub}
                 onChange={(checked, e) => {
                     handleChange(e);
                 }}
                 label="Substring Indexing"
-                />
-            </div>
-        );
-        let approx = (
-            <div>
-                <Checkbox
+            />
+        </div>;
+        let approx = <div>
+            <Checkbox
                 id="indexTypeApprox"
                 isChecked={this.props.indexTypeApprox}
                 onChange={(checked, e) => {
                     handleChange(e);
                 }}
                 label="Approximate Indexing"
-                />
-            </div>
-        );
+            />
+        </div>;
 
         if (attrTypes.includes('eq')) {
-            eq = (
-                <div>
-                    <Checkbox
+            eq = <div>
+                <Checkbox
                     id="indexTypeEq"
                     isChecked={this.props.indexTypeEq}
                     onChange={(checked, e) => {
                         handleChange(e);
                     }}
                     label="Equality Indexing"
-                    />
-                </div>
-            );
+                />
+            </div>;
         }
         if (attrTypes.includes('pres')) {
-            pres = (
-                <div>
-                    <Checkbox
+            pres = <div>
+                <Checkbox
                     id="indexTypePres"
                     isChecked={this.props.indexTypePres}
                     onChange={(checked, e) => {
                         handleChange(e);
                     }}
                     label="Presence Indexing"
-                    />
-                </div>
-            );
+                />
+            </div>;
         }
         if (attrTypes.includes('sub')) {
-            sub = (
-                <div>
-                    <Checkbox
+            sub = <div>
+                <Checkbox
                     id="indexTypeSub"
                     isChecked={this.props.indexTypeSub}
                     onChange={(checked, e) => {
                         handleChange(e);
                     }}
                     label="Substring Indexing"
-                    />
-                </div>
-            );
+                />
+            </div>;
         }
         if (attrTypes.includes('approx')) {
-            approx = (
-                <div>
-                    <Checkbox
+            approx = <div>
+                <Checkbox
                     id="indexTypeApprox"
                     isChecked={this.props.indexTypeApprox}
                     onChange={(checked, e) => {
                         handleChange(e);
                     }}
                     label="Approximate Indexing"
-                    />
-                </div>
-            );
+                />
+            </div>;
         }
 
         const title = <div>Edit Database Index (<b>{indexName[0]}</b>)</div>;

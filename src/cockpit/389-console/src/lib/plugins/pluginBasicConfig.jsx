@@ -38,7 +38,7 @@ class PluginBasicConfig extends React.Component {
             isExpanded: false,
         };
 
-        this.handleToggle = (isExpanded) => {
+        this.onToggle = (isExpanded) => {
             this.setState({
                 isExpanded
             });
@@ -117,7 +117,7 @@ class PluginBasicConfig extends React.Component {
                                 );
                                 toggleLoadingHandler();
                             })
-                            .fail(() => {
+                            .fail(err => {
                                 console.error(
                                     "handleSwitchChange failed",
                                     "Failed to get nsslapd-dynamic-pluginc attribute value"
@@ -237,7 +237,7 @@ class PluginBasicConfig extends React.Component {
                     <ExpandableSection
                         className="ds-margin-top-lg"
                         toggleText={this.state.isExpanded ? 'Hide Plugin Details' : 'Show Plugin Details'}
-                        onToggle={this.handleToggle}
+                        onToggle={this.onToggle}
                         isExpanded={this.state.isExpanded}
                     >
                         <Grid className="ds-margin-left">
@@ -327,7 +327,8 @@ class PluginBasicConfig extends React.Component {
                                 </Form>
                             </GridItem>
                         </Grid>
-                    </ExpandableSection>}
+                    </ExpandableSection>
+                }
             </div>
         );
     }

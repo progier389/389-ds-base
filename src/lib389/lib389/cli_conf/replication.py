@@ -112,15 +112,10 @@ def _args_to_attrs(args):
 #
 def get_ruv(inst, basedn, log, args):
     replicas = Replicas(inst)
-    try:
-        replica = replicas.get(args.suffix)
-    except ldap.NO_SUCH_OBJECT:
-        raise ValueError(f"Suffix '{args.suffix}' is not configured for replication.")
+    replica = replicas.get(args.suffix)
     ruv = replica.get_ruv()
     ruv_dict = ruv.format_ruv()
     ruvs = ruv_dict['ruvs']
-    if len(ruvs) == 0:
-        raise ValueError(f"There is no RUV for suffix {args.suffix}.  Replica is not initialized.")
     if args and args.json:
         log.info(json.dumps({"type": "list", "items": ruvs}, indent=4))
     else:

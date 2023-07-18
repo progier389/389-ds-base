@@ -100,18 +100,18 @@ class ManagedEntries extends React.Component {
         };
 
         // Template RDN
-        this.handleRDNSelect = (event, selection) => {
+        this.onRDNSelect = (event, selection) => {
             this.setState({
                 templateRDNAttr: selection,
                 isRDNOpen: false
             });
         };
-        this.handleRDNToggle = isRDNOpen => {
+        this.onRDNToggle = isRDNOpen => {
             this.setState({
                 isRDNOpen
             });
         };
-        this.handleClearRDNSelection = () => {
+        this.clearRDNSelection = () => {
             this.setState({
                 templateRDNAttr: "",
                 isRDNOpen: false
@@ -119,14 +119,14 @@ class ManagedEntries extends React.Component {
         };
 
         // Template Add static attrs
-        this.handleStaticSelect = (event, selection) => {
+        this.onStaticSelect = (event, selection) => {
             this.setState({
                 staticAttr: selection,
                 isStaticOpen: false
             });
         };
 
-        this.handleStaticToggle = isStaticOpen => {
+        this.onStaticToggle = isStaticOpen => {
             this.setState({
                 isStaticOpen
             });
@@ -138,7 +138,7 @@ class ManagedEntries extends React.Component {
             }));
         };
 
-        this.handleClearStaticSelection = () => {
+        this.clearStaticSelection = () => {
             this.setState({
                 staticAttr: [],
                 isStaticOpen: false
@@ -146,20 +146,20 @@ class ManagedEntries extends React.Component {
         };
 
         // Template Add Mapped attrs
-        this.handleMappedSelect = (event, selection) => {
+        this.onMappedSelect = (event, selection) => {
             this.setState({
                 mappedAttr: selection,
                 isMappedOpen: false
             });
         };
 
-        this.handleMappedToggle = isMappedOpen => {
+        this.onMappedToggle = isMappedOpen => {
             this.setState({
                 isMappedOpen
             });
         };
 
-        this.handleClearMappedSelection = () => {
+        this.clearMappedSelection = () => {
             this.setState({
                 mappedAttr: [],
                 isMappedOpen: false
@@ -167,14 +167,14 @@ class ManagedEntries extends React.Component {
         };
 
         // Template static attributes simple list selection
-        this.handleStaticListSelect = (selectedItem, selectedItemProps) => {
+        this.onStaticListSelect = (selectedItem, selectedItemProps) => {
             this.setState({
                 selectedStaticAttr: selectedItem.current.textContent
             });
         };
 
         // Template mapped attributes sinmple list selection
-        this.handleMappedListSelect = (selectedItem, selectedItemProps) => {
+        this.onMappedListSelect = (selectedItem, selectedItemProps) => {
             this.setState({
                 selectedMappedAttr: selectedItem.current.textContent
             });
@@ -185,14 +185,14 @@ class ManagedEntries extends React.Component {
         this.updateFields = this.updateFields.bind(this);
         this.loadConfigs = this.loadConfigs.bind(this);
         this.getAttributes = this.getAttributes.bind(this);
-        this.onConfirmChange = this.onConfirmChange.bind(this);
+        this.handleConfirmChange = this.handleConfirmChange.bind(this);
         // Definition functions
         this.openDefModal = this.openDefModal.bind(this);
-        this.handleCloseDefModal = this.handleCloseDefModal.bind(this);
+        this.closeDefModal = this.closeDefModal.bind(this);
         this.showEditDefModal = this.showEditDefModal.bind(this);
         this.cmdDefOperation = this.cmdDefOperation.bind(this);
         this.showEditDefModal = this.showEditDefModal.bind(this);
-        this.handleShowAddDefModal = this.handleShowAddDefModal.bind(this);
+        this.showAddDefModal = this.showAddDefModal.bind(this);
         this.deleteDefConfig = this.deleteDefConfig.bind(this);
         this.addDefConfig = this.addDefConfig.bind(this);
         this.editDefConfig = this.editDefConfig.bind(this);
@@ -202,24 +202,24 @@ class ManagedEntries extends React.Component {
         this.cmdTemplateOperation = this.cmdTemplateOperation.bind(this);
         this.showEditTempModal = this.showEditTempModal.bind(this);
         this.openTempModal = this.openTempModal.bind(this);
-        this.handleCloseTempModal = this.handleCloseTempModal.bind(this);
-        this.handleShowAddTempModal = this.handleShowAddTempModal.bind(this);
+        this.closeTempModal = this.closeTempModal.bind(this);
+        this.showAddTempModal = this.showAddTempModal.bind(this);
         this.deleteTemplate = this.deleteTemplate.bind(this);
         this.addTemplate = this.addTemplate.bind(this);
         this.editTemplate = this.editTemplate.bind(this);
-        this.handleOpenStaticAttrModal = this.handleOpenStaticAttrModal.bind(this);
-        this.handleCloseStaticAttrModal = this.handleCloseStaticAttrModal.bind(this);
+        this.openStaticAttrModal = this.openStaticAttrModal.bind(this);
+        this.closeStaticAttrModal = this.closeStaticAttrModal.bind(this);
         this.deleteStaticAttribute = this.deleteStaticAttribute.bind(this);
-        this.handleOpenMappedAttrModal = this.handleOpenMappedAttrModal.bind(this);
-        this.handleCloseMappedAttrModal = this.handleCloseMappedAttrModal.bind(this);
+        this.openMappedAttrModal = this.openMappedAttrModal.bind(this);
+        this.closeMappedAttrModal = this.closeMappedAttrModal.bind(this);
         this.deleteMappedAttribute = this.deleteMappedAttribute.bind(this);
-        this.handleAddStaticAttrToList = this.handleAddStaticAttrToList.bind(this);
-        this.handleAddMappedAttrToList = this.handleAddMappedAttrToList.bind(this);
+        this.addStaticAttrToList = this.addStaticAttrToList.bind(this);
+        this.addMappedAttrToList = this.addMappedAttrToList.bind(this);
         this.showTempDeleteConfirm = this.showTempDeleteConfirm.bind(this);
         this.closeTempDeleteConfirm = this.closeTempDeleteConfirm.bind(this);
-        this.handleShowMappedAttrDeleteConfirm = this.handleShowMappedAttrDeleteConfirm.bind(this);
+        this.showMappedAttrDeleteConfirm = this.showMappedAttrDeleteConfirm.bind(this);
         this.closeMappedAttrDeleteConfirm = this.closeMappedAttrDeleteConfirm.bind(this);
-        this.handleShowStaticAttrDeleteConfirm = this.handleShowStaticAttrDeleteConfirm.bind(this);
+        this.showStaticAttrDeleteConfirm = this.showStaticAttrDeleteConfirm.bind(this);
         this.closeStaticAttrDeleteConfirm = this.closeStaticAttrDeleteConfirm.bind(this);
     }
 
@@ -281,7 +281,7 @@ class ManagedEntries extends React.Component {
                     const myObject = JSON.parse(content);
                     let defCreateDisabled = false;
                     const templateOptions = [];
-                    if (myObject.items.length === 0) {
+                    if (myObject.items.length == 0) {
                         // We loaded the templates first to set the definition's
                         // save btn.  You must have templates before you can
                         // create the definition.
@@ -297,8 +297,8 @@ class ManagedEntries extends React.Component {
                     this.setState({
                         showDefDeleteConfirm: false,
                         templateRows: myObject.items.map(item => item.attrs),
-                        defCreateDisabled,
-                        templateOptions,
+                        defCreateDisabled: defCreateDisabled,
+                        templateOptions: templateOptions,
                         managedTemplate: templateOptions.length ? templateOptions[0].value : ""
                     });
                     //
@@ -321,13 +321,13 @@ class ManagedEntries extends React.Component {
                                 const tableKey = this.state.tableKey + 1;
                                 this.setState({
                                     configRows: myObject.items.map(item => item.attrs),
-                                    tableKey,
+                                    tableKey: tableKey,
                                     loading: false
                                 });
                             })
                             .fail(err => {
                                 const errMsg = JSON.parse(err);
-                                if (err !== 0) {
+                                if (err != 0) {
                                     console.log("loadConfigs failed getting definitions", errMsg.desc);
                                 }
                                 this.setState({
@@ -337,7 +337,7 @@ class ManagedEntries extends React.Component {
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
-                    if (err !== 0) {
+                    if (err != 0) {
                         console.log("loadConfigs failed getting templates", errMsg.desc);
                     }
                     this.setState({
@@ -350,13 +350,13 @@ class ManagedEntries extends React.Component {
         this.openTempModal(entrydn);
     }
 
-    handleShowAddTempModal() {
+    showAddTempModal() {
         this.openTempModal();
     }
 
     openTempModal(entrydn) {
         this.getAttributes();
-        if (entrydn === "" || entrydn === undefined) {
+        if (entrydn == "" || entrydn === undefined) {
             this.setState({
                 newTemplateEntry: true,
                 templateDN: "",
@@ -425,7 +425,7 @@ class ManagedEntries extends React.Component {
         }
     }
 
-    handleAddStaticAttrToList() {
+    addStaticAttrToList() {
         // Add the selected static attribute to the state list
         const value = this.state.staticAttr + ": " + this.state.staticValue;
         const values = this.state.templateStaticAttr;
@@ -452,7 +452,7 @@ class ManagedEntries extends React.Component {
         });
     }
 
-    handleAddMappedAttrToList() {
+    addMappedAttrToList() {
         // Add the selected mapped attribute to the state list
         const values = this.state.templateMappedAttr;
         values.push(this.state.mappedAttr + ": " + this.state.mappedValue);
@@ -462,8 +462,8 @@ class ManagedEntries extends React.Component {
         }));
     }
 
-    handleShowMappedAttrDeleteConfirm() {
-        if (this.state.selectedMappedAttr !== "") {
+    showMappedAttrDeleteConfirm() {
+        if (this.state.selectedMappedAttr != "") {
             this.setState({
                 showMappedAttrDeleteConfirm: true,
                 modalChecked: false
@@ -477,8 +477,8 @@ class ManagedEntries extends React.Component {
         });
     }
 
-    handleShowStaticAttrDeleteConfirm() {
-        if (this.state.selectedStaticAttr !== "") {
+    showStaticAttrDeleteConfirm() {
+        if (this.state.selectedStaticAttr != "") {
             this.setState({
                 showStaticAttrDeleteConfirm: true,
                 modalChecked: false
@@ -508,11 +508,11 @@ class ManagedEntries extends React.Component {
         });
     }
 
-    handleCloseTempModal() {
+    closeTempModal() {
         this.setState({ templateModalShow: false });
     }
 
-    handleOpenMappedAttrModal () {
+    openMappedAttrModal () {
         this.setState({
             templateAddMappedShow: true,
             modalChecked: false,
@@ -522,13 +522,13 @@ class ManagedEntries extends React.Component {
         });
     }
 
-    handleCloseMappedAttrModal() {
+    closeMappedAttrModal() {
         this.setState({
             templateAddMappedShow: false,
         });
     }
 
-    handleOpenStaticAttrModal () {
+    openStaticAttrModal () {
         this.setState({
             templateAddStaticShow: true,
             modalChecked: false,
@@ -538,7 +538,7 @@ class ManagedEntries extends React.Component {
         });
     }
 
-    handleCloseStaticAttrModal() {
+    closeStaticAttrModal() {
         this.setState({ templateAddStaticShow: false });
     }
 
@@ -546,7 +546,7 @@ class ManagedEntries extends React.Component {
         this.openDefModal(rowData);
     }
 
-    handleShowAddDefModal(rowData) {
+    showAddDefModal(rowData) {
         this.openDefModal();
     }
 
@@ -625,7 +625,7 @@ class ManagedEntries extends React.Component {
         }
     }
 
-    handleCloseDefModal() {
+    closeDefModal() {
         this.setState({ configEntryModalShow: false });
     }
 
@@ -688,13 +688,13 @@ class ManagedEntries extends React.Component {
             configName,
             action,
             "--scope",
-            originScope || action === "add" ? originScope : "delete",
+            originScope || action == "add" ? originScope : "delete",
             "--filter",
-            originFilter || action === "add" ? originFilter : "delete",
+            originFilter || action == "add" ? originFilter : "delete",
             "--managed-base",
-            managedBase || action === "add" ? managedBase : "delete",
+            managedBase || action == "add" ? managedBase : "delete",
             "--managed-template",
-            managedTemplate || action === "add" ? managedTemplate : "delete"
+            managedTemplate || action == "add" ? managedTemplate : "delete"
         ];
 
         this.toggleLoading();
@@ -711,7 +711,7 @@ class ManagedEntries extends React.Component {
                         `The ${action} operation was successfully done on "${configName}" entry`
                     );
                     this.loadConfigs();
-                    this.handleCloseDefModal();
+                    this.closeDefModal();
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
@@ -720,7 +720,7 @@ class ManagedEntries extends React.Component {
                         `Error during the config entry ${action} operation - ${errMsg.desc}`
                     );
                     this.loadConfigs();
-                    this.handleCloseDefModal();
+                    this.closeDefModal();
                 });
     }
 
@@ -752,29 +752,29 @@ class ManagedEntries extends React.Component {
         ];
 
         cmd = [...cmd, "--rdn-attr"];
-        if (templateRDNAttr !== "") {
+        if (templateRDNAttr != "") {
             cmd = [...cmd, templateRDNAttr];
-        } else if (action === "add") {
+        } else if (action == "add") {
             cmd = [...cmd, ""];
         } else {
             cmd = [...cmd, "delete"];
         }
 
-        if (templateStaticAttr.length !== 0) {
+        if (templateStaticAttr.length != 0) {
             cmd = [...cmd, "--static-attr"];
             for (const value of templateStaticAttr) {
                 cmd = [...cmd, value];
             }
-        } else if (action !== "add") {
+        } else if (action != "add") {
             cmd = [...cmd, "--static-attr", "delete"];
         }
 
-        if (templateMappedAttr.length !== 0) {
+        if (templateMappedAttr.length != 0) {
             cmd = [...cmd, "--mapped-attr"];
             for (const value of templateMappedAttr) {
                 cmd = [...cmd, value];
             }
-        } else if (action !== "add") {
+        } else if (action != "add") {
             cmd = [...cmd, "--mapped-attr", "delete"];
         }
 
@@ -795,11 +795,11 @@ class ManagedEntries extends React.Component {
                         `Config entry ${templateDN} was successfully ${action}ed`
                     );
                     this.loadConfigs();
-                    this.handleCloseTempModal();
+                    this.closeTempModal();
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
-                    this.handleCloseTempModal();
+                    this.closeTempModal();
                     this.props.addNotification(
                         "error",
                         `Error during the template entry ${action} operation - ${errMsg.desc}`
@@ -884,7 +884,7 @@ class ManagedEntries extends React.Component {
                 });
     }
 
-    onConfirmChange(e) {
+    handleConfirmChange(e) {
         this.setState({
             modalChecked: e.target.checked
         });
@@ -892,21 +892,21 @@ class ManagedEntries extends React.Component {
 
     validateDef(newDefEntry) {
         let defSaveDisabled = false;
-        if (this.state.configName === "" ||
-            (this.state.originScope === "" || !valid_dn(this.state.originScope)) ||
-            this.state.originFilter === "" ||
-            (this.state.managedBase === "" || !valid_dn(this.state.managedBase)) ||
-            this.state.managedTemplate === "") {
+        if (this.state.configName == "" ||
+            (this.state.originScope == "" || !valid_dn(this.state.originScope)) ||
+            this.state.originFilter == "" ||
+            (this.state.managedBase == "" || !valid_dn(this.state.managedBase)) ||
+            this.state.managedTemplate == "") {
             defSaveDisabled = true;
         }
 
         // If editing an entry we need to check if values were changed before
         // enabling the save button
         if (!newDefEntry && !defSaveDisabled) {
-            if (this.state.originScope === this.state._originScope &&
-                this.state.originFilter === this.state._originFilter &&
-                this.state.managedBase === this.state._managedBase &&
-                this.state.managedTemplate === this.state._managedTemplate) {
+            if (this.state.originScope == this.state._originScope &&
+                this.state.originFilter == this.state._originFilter &&
+                this.state.managedBase == this.state._managedBase &&
+                this.state.managedTemplate == this.state._managedTemplate) {
                 defSaveDisabled = true;
             }
         }
@@ -928,9 +928,9 @@ class ManagedEntries extends React.Component {
     validateTemp(newTemplateEntry) {
         let tempSaveDisabled = false;
 
-        if (this.state.templateDN === "" ||
-            (this.state.templateDN !== "" && !valid_dn(this.state.templateDN)) ||
-            this.state.templateRDNAttr === "") {
+        if (this.state.templateDN == "" ||
+            (this.state.templateDN != "" && !valid_dn(this.state.templateDN)) ||
+            this.state.templateRDNAttr == "") {
             tempSaveDisabled = true;
         }
 
@@ -942,8 +942,8 @@ class ManagedEntries extends React.Component {
         // If editing an entry we need to check if values were changed before
         // enabling the save button
         if (!newTemplateEntry && !tempSaveDisabled) {
-            if (this.state.templateDN === this.state._templateDN &&
-                this.state.templateRDNAttr === this.state._templateRDNAttr &&
+            if (this.state.templateDN == this.state._templateDN &&
+                this.state.templateRDNAttr == this.state._templateRDNAttr &&
                 listsEqual(this.state.templateMappedAttr, this.state._templateMappedAttr) &&
                 listsEqual(this.state.templateStaticAttr, this.state._templateStaticAttr)) {
                 tempSaveDisabled = true;
@@ -998,7 +998,7 @@ class ManagedEntries extends React.Component {
                     aria-labelledby="ds-modal"
                     title={title}
                     isOpen={configEntryModalShow}
-                    onClose={this.handleCloseDefModal}
+                    onClose={this.closeDefModal}
                     actions={[
                         <Button
                             key="saveshared"
@@ -1008,7 +1008,7 @@ class ManagedEntries extends React.Component {
                         >
                             Save Definition
                         </Button>,
-                        <Button key="cancel" variant="link" onClick={this.handleCloseDefModal}>
+                        <Button key="cancel" variant="link" onClick={this.closeDefModal}>
                             Cancel
                         </Button>
                     ]}
@@ -1035,7 +1035,7 @@ class ManagedEntries extends React.Component {
                             fieldId="originScope"
                             helperTextInvalid="A valid DN must be provided"
                             validated={
-                                originScope !== "" && !valid_dn(originScope)
+                                originScope != "" && !valid_dn(originScope)
                                     ? ValidatedOptions.error
                                     : ValidatedOptions.default
                             }
@@ -1050,7 +1050,7 @@ class ManagedEntries extends React.Component {
                                 name="originScope"
                                 onChange={this.handleFieldChange}
                                 validated={
-                                    originScope !== "" && !valid_dn(originScope)
+                                    originScope != "" && !valid_dn(originScope)
                                         ? ValidatedOptions.error
                                         : ValidatedOptions.default
                                 }
@@ -1078,7 +1078,7 @@ class ManagedEntries extends React.Component {
                             fieldId="managedBase"
                             helperTextInvalid="A valid DN must be provided"
                             validated={
-                                managedBase !== "" && !valid_dn(managedBase)
+                                managedBase != "" && !valid_dn(managedBase)
                                     ? ValidatedOptions.error
                                     : ValidatedOptions.default
                             }
@@ -1093,7 +1093,7 @@ class ManagedEntries extends React.Component {
                                 name="managedBase"
                                 onChange={this.handleFieldChange}
                                 validated={
-                                    managedBase !== "" && !valid_dn(managedBase)
+                                    managedBase != "" && !valid_dn(managedBase)
                                         ? ValidatedOptions.error
                                         : ValidatedOptions.default
                                 }
@@ -1125,7 +1125,7 @@ class ManagedEntries extends React.Component {
                     aria-labelledby="ds-modal"
                     title={templateTitle}
                     isOpen={this.state.templateModalShow}
-                    onClose={this.handleCloseTempModal}
+                    onClose={this.closeTempModal}
                     actions={[
                         <Button
                             key="savetemp"
@@ -1135,7 +1135,7 @@ class ManagedEntries extends React.Component {
                         >
                             Save Template
                         </Button>,
-                        <Button key="cancel" variant="link" onClick={this.handleCloseTempModal}>
+                        <Button key="cancel" variant="link" onClick={this.closeTempModal}>
                             Cancel
                         </Button>
                     ]}
@@ -1146,7 +1146,7 @@ class ManagedEntries extends React.Component {
                             fieldId="templateDN"
                             helperTextInvalid="The template DN must be set to a valid DN"
                             validated={
-                                templateDN !== "" && !valid_dn(templateDN)
+                                templateDN != "" && !valid_dn(templateDN)
                                     ? ValidatedOptions.error
                                     : ValidatedOptions.default
                             }
@@ -1162,7 +1162,7 @@ class ManagedEntries extends React.Component {
                                 onChange={this.handleFieldChange}
                                 isDisabled={!newTemplateEntry}
                                 validated={
-                                    templateDN !== "" && !valid_dn(templateDN)
+                                    templateDN != "" && !valid_dn(templateDN)
                                         ? ValidatedOptions.error
                                         : ValidatedOptions.default
                                 }
@@ -1177,9 +1177,9 @@ class ManagedEntries extends React.Component {
                             <Select
                                 variant={SelectVariant.typeahead}
                                 typeAheadAriaLabel="Type an attribute"
-                                onToggle={this.handleRDNToggle}
-                                onSelect={this.handleRDNSelect}
-                                onClear={this.handleClearRDNSelection}
+                                onToggle={this.onRDNToggle}
+                                onSelect={this.onRDNSelect}
+                                onClear={this.clearRDNSelection}
                                 selections={templateRDNAttr}
                                 isOpen={this.state.isRDNOpen}
                                 aria-labelledby="typeAhead-rdn"
@@ -1203,16 +1203,14 @@ class ManagedEntries extends React.Component {
                         >
                             <SimpleList
                                 className="ds-modal-list"
-                                onSelect={this.handleMappedListSelect}
+                                onSelect={this.onMappedListSelect}
                                 aria-label="mappedAttrList"
                             >
-                                {templateMappedAttr.length
-                                    ? templateMappedAttr.map((attr) => (
-                                        <SimpleListItem id={attr} key={attr}>
-                                            {attr}
-                                        </SimpleListItem>
-                                    ))
-                                    : ""}
+                                {templateMappedAttr.length ? templateMappedAttr.map((attr) => (
+                                    <SimpleListItem id={attr} key={attr}>
+                                        {attr}
+                                    </SimpleListItem>
+                                )) : ""}
                             </SimpleList>
                             <p
                                 hidden={templateRdnMappingOK}
@@ -1225,7 +1223,7 @@ class ManagedEntries extends React.Component {
                                     className="ds-margin-top"
                                     key="addstatic"
                                     variant="primary"
-                                    onClick={this.handleOpenMappedAttrModal}
+                                    onClick={this.openMappedAttrModal}
                                 >
                                     Add Attribute
                                 </Button>
@@ -1233,8 +1231,8 @@ class ManagedEntries extends React.Component {
                                     className="ds-left-margin"
                                     key="delstatic"
                                     variant="primary"
-                                    isDisabled={this.state.selectedMappedAttr === ""}
-                                    onClick={this.handleShowMappedAttrDeleteConfirm}
+                                    isDisabled={this.state.selectedMappedAttr == ""}
+                                    onClick={this.showMappedAttrDeleteConfirm}
                                 >
                                     Delete Attribute
                                 </Button>
@@ -1248,22 +1246,20 @@ class ManagedEntries extends React.Component {
                         >
                             <SimpleList
                                 className="ds-modal-list"
-                                onSelect={this.handleStaticListSelect}
+                                onSelect={this.onStaticListSelect}
                                 aria-label="Simple List Example"
                             >
-                                {templateStaticAttr.length
-                                    ? templateStaticAttr.map((attr) => (
-                                        <SimpleListItem id={attr} key={attr}>
-                                            {attr}
-                                        </SimpleListItem>
-                                    ))
-                                    : ""}
+                                {templateStaticAttr.length ? templateStaticAttr.map((attr) => (
+                                    <SimpleListItem id={attr} key={attr}>
+                                        {attr}
+                                    </SimpleListItem>
+                                )) : ""}
                             </SimpleList>
                             <div className="ds-margin-top">
                                 <Button
                                     key="addstatic"
                                     variant="primary"
-                                    onClick={this.handleOpenStaticAttrModal}
+                                    onClick={this.openStaticAttrModal}
                                 >
                                     Add Attribute
                                 </Button>
@@ -1271,8 +1267,8 @@ class ManagedEntries extends React.Component {
                                     className="ds-left-margin"
                                     key="delstatic"
                                     variant="primary"
-                                    isDisabled={this.state.selectedStaticAttr === ""}
-                                    onClick={this.handleShowStaticAttrDeleteConfirm}
+                                    isDisabled={this.state.selectedStaticAttr == ""}
+                                    onClick={this.showStaticAttrDeleteConfirm}
                                 >
                                     Delete Attribute
                                 </Button>
@@ -1287,17 +1283,17 @@ class ManagedEntries extends React.Component {
                     aria-labelledby="ds-modal"
                     title="Add Static Attribute"
                     isOpen={templateAddStaticShow}
-                    onClose={this.handleCloseStaticAttrModal}
+                    onClose={this.closeStaticAttrModal}
                     actions={[
                         <Button
                             key="saveshared"
                             variant="primary"
-                            onClick={this.handleAddStaticAttrToList}
-                            isDisabled={!this.state.staticAttr.length || this.state.staticValue === ""}
+                            onClick={this.addStaticAttrToList}
+                            isDisabled={!this.state.staticAttr.length || this.state.staticValue == ""}
                         >
                             Add Attribute
                         </Button>,
-                        <Button key="cancel" variant="link" onClick={this.handleCloseStaticAttrModal}>
+                        <Button key="cancel" variant="link" onClick={this.closeStaticAttrModal}>
                             Cancel
                         </Button>
                     ]}
@@ -1311,9 +1307,9 @@ class ManagedEntries extends React.Component {
                             <Select
                                 variant={SelectVariant.typeahead}
                                 typeAheadAriaLabel="Type an attribute"
-                                onToggle={this.handleStaticToggle}
-                                onSelect={this.handleStaticSelect}
-                                onClear={this.handleClearStaticSelection}
+                                onToggle={this.onStaticToggle}
+                                onSelect={this.onStaticSelect}
+                                onClear={this.clearStaticSelection}
                                 selections={this.state.staticAttr}
                                 isOpen={this.state.isStaticOpen}
                                 aria-labelledby="typeAhead-static"
@@ -1352,17 +1348,17 @@ class ManagedEntries extends React.Component {
                     aria-labelledby="ds-modal"
                     title="Add Mapped Attribute"
                     isOpen={templateAddMappedShow}
-                    onClose={this.handleCloseMappedAttrModal}
+                    onClose={this.closeMappedAttrModal}
                     actions={[
                         <Button
                             key="savemapped"
                             variant="primary"
-                            onClick={this.handleAddMappedAttrToList}
-                            isDisabled={!this.state.mappedAttr.length || this.state.mappedValue === ""}
+                            onClick={this.addMappedAttrToList}
+                            isDisabled={!this.state.mappedAttr.length || this.state.mappedValue == ""}
                         >
                             Add Attribute
                         </Button>,
-                        <Button key="cancel" variant="link" onClick={this.handleCloseMappedAttrModal}>
+                        <Button key="cancel" variant="link" onClick={this.closeMappedAttrModal}>
                             Cancel
                         </Button>
                     ]}
@@ -1376,9 +1372,9 @@ class ManagedEntries extends React.Component {
                             <Select
                                 variant={SelectVariant.typeahead}
                                 typeAheadAriaLabel="Type an attribute"
-                                onToggle={this.handleMappedToggle}
-                                onSelect={this.handleMappedSelect}
-                                onClear={this.handleClearMappedSelection}
+                                onToggle={this.onMappedToggle}
+                                onSelect={this.onMappedSelect}
+                                onClear={this.clearMappedSelection}
                                 selections={this.state.mappedAttr}
                                 isOpen={this.state.isMappedOpen}
                                 aria-labelledby="typeAhead-static"
@@ -1464,7 +1460,7 @@ class ManagedEntries extends React.Component {
                                     <Button
                                         className="ds-left-margin"
                                         variant="primary"
-                                        onClick={this.handleShowAddTempModal}
+                                        onClick={this.showAddTempModal}
                                     >
                                         Create Template
                                     </Button>
@@ -1501,7 +1497,7 @@ class ManagedEntries extends React.Component {
                                     <Button
                                         className="ds-left-margin"
                                         variant="primary"
-                                        onClick={this.handleShowAddDefModal}
+                                        onClick={this.showAddDefModal}
                                         isDisabled={this.state.defCreateDisabled}
                                     >
                                         Add Definition
@@ -1516,7 +1512,7 @@ class ManagedEntries extends React.Component {
                                     fieldId="configArea"
                                     helperTextInvalid="The DN for the shared conifig area is invalid"
                                     validated={
-                                        configArea !== "" && !valid_dn(configArea)
+                                        configArea != "" && !valid_dn(configArea)
                                             ? ValidatedOptions.error
                                             : ValidatedOptions.default
                                     }
@@ -1537,7 +1533,7 @@ class ManagedEntries extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showTempDeleteConfirm}
                     closeHandler={this.closeTempDeleteConfirm}
-                    handleChange={this.onConfirmChange}
+                    handleChange={this.handleConfirmChange}
                     actionHandler={this.deleteTemplate}
                     spinning={this.state.modalSpinning}
                     item={this.state.templateDN}
@@ -1550,7 +1546,7 @@ class ManagedEntries extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showDefDeleteConfirm}
                     closeHandler={this.closeDefDeleteConfirm}
-                    handleChange={this.onConfirmChange}
+                    handleChange={this.handleConfirmChange}
                     actionHandler={this.deleteDefConfig}
                     spinning={this.state.modalSpinning}
                     item={this.state.configName}
@@ -1563,7 +1559,7 @@ class ManagedEntries extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showMappedAttrDeleteConfirm}
                     closeHandler={this.closeMappedAttrDeleteConfirm}
-                    handleChange={this.onConfirmChange}
+                    handleChange={this.handleConfirmChange}
                     actionHandler={this.deleteMappedAttribute}
                     spinning={this.state.modalSpinning}
                     item={this.state.selectedMappedAttr}
@@ -1576,7 +1572,7 @@ class ManagedEntries extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showStaticAttrDeleteConfirm}
                     closeHandler={this.closeStaticAttrDeleteConfirm}
-                    handleChange={this.onConfirmChange}
+                    handleChange={this.handleConfirmChange}
                     actionHandler={this.deleteStaticAttribute}
                     spinning={this.state.modalSpinning}
                     item={this.state.selectedStaticAttr}

@@ -33,8 +33,8 @@ class USNPlugin extends React.Component {
     constructor(props) {
         super(props);
 
-        this.handleRunCleanup = this.handleRunCleanup.bind(this);
-        this.handleToggleCleanupModal = this.handleToggleCleanupModal.bind(this);
+        this.runCleanup = this.runCleanup.bind(this);
+        this.toggleCleanupModal = this.toggleCleanupModal.bind(this);
         this.updateSwitch = this.updateSwitch.bind(this);
         this.handleSwitchChange = this.handleSwitchChange.bind(this);
         this.handleFieldChange = this.handleFieldChange.bind(this);
@@ -53,18 +53,18 @@ class USNPlugin extends React.Component {
 
         this.minValue = 0;
         this.maxValue = 20000000;
-        this.handleMinusConfig = () => {
+        this.onMinusConfig = () => {
             this.setState({
                 cleanupMaxUSN: Number(this.state.cleanupMaxUSN) - 1
             });
         };
-        this.handleConfigChange = (event) => {
+        this.onConfigChange = (event) => {
             const newValue = isNaN(event.target.value) ? 0 : Number(event.target.value);
             this.setState({
                 cleanupMaxUSN: newValue > this.maxValue ? this.maxValue : newValue < this.minValue ? this.minValue : newValue
             });
         };
-        this.handlePlusConfig = (id) => {
+        this.onPlusConfig = (id) => {
             this.setState({
                 cleanupMaxUSN: Number(this.state.cleanupMaxUSN) + 1
             });
@@ -160,14 +160,14 @@ class USNPlugin extends React.Component {
                     const myObject = JSON.parse(content);
                     const usnGlobalAttr = myObject.attrs["nsslapd-entryusn-global"][0];
                     this.setState({
-                        globalMode: !(usnGlobalAttr === "off"),
-                        pluginEnabled,
+                        globalMode: !(usnGlobalAttr == "off"),
+                        pluginEnabled: pluginEnabled,
                         disableSwitch: false
                     });
                     this.props.toggleLoadingHandler();
                 })
                 .fail(err => {
-                    if (err !== 0) {
+                    if (err != 0) {
                         const errMsg = JSON.parse(err);
                         console.log("Get global USN failed", errMsg.desc);
                     }
@@ -178,7 +178,7 @@ class USNPlugin extends React.Component {
                 });
     }
 
-    handleToggleCleanupModal() {
+    toggleCleanupModal() {
         this.setState(prevState => ({
             cleanupModalShow: !prevState.cleanupModalShow,
             cleanupSuffix: prevState.suffixList[0],
@@ -186,7 +186,7 @@ class USNPlugin extends React.Component {
         }));
     }
 
-    handleRunCleanup() {
+    runCleanup() {
         if (!this.state.cleanupSuffix) {
             this.props.addNotification("warning", "Suffix is required.");
         } else {
@@ -207,7 +207,7 @@ class USNPlugin extends React.Component {
             }
 
             this.props.toggleLoadingHandler();
-            log_cmd("handleRunCleanup", "Run cleanup USN tombstones", cmd);
+            log_cmd("runCleanup", "Run cleanup USN tombstones", cmd);
             cockpit
                     .spawn(cmd, {
                         superuser: true,
@@ -254,12 +254,12 @@ class USNPlugin extends React.Component {
                     title="USN Tombstone Cleanup Task"
                     aria-labelledby="ds-modal"
                     isOpen={cleanupModalShow}
-                    onClose={this.handleToggleCleanupModal}
+                    onClose={this.toggleCleanupModal}
                     actions={[
-                        <Button key="confirm" variant="primary" onClick={this.handleRunCleanup}>
+                        <Button key="confirm" variant="primary" onClick={this.runCleanup}>
                             Run
                         </Button>,
-                        <Button key="cancel" variant="link" onClick={this.handleToggleCleanupModal}>
+                        <Button key="cancel" variant="link" onClick={this.toggleCleanupModal}>
                             Cancel
                         </Button>
                     ]}
@@ -293,9 +293,9 @@ class USNPlugin extends React.Component {
                                     value={cleanupMaxUSN}
                                     min={this.minValue}
                                     max={this.maxValue}
-                                    onMinus={this.handleMinusConfig}
-                                    onChange={this.handleConfigChange}
-                                    onPlus={this.handlePlusConfig}
+                                    onMinus={this.onMinusConfig}
+                                    onChange={this.onConfigChange}
+                                    onPlus={this.onPlusConfig}
                                     inputName="input"
                                     inputAriaLabel="number input"
                                     minusBtnAriaLabel="minus"
@@ -354,7 +354,7 @@ class USNPlugin extends React.Component {
                                 Tombstone Cleanup Task<WrenchIcon className="ds-left-margin" />
                             </GridItem>
                             <GridItem span={9}>
-                                <Button className="ds-margin-top" variant="primary" isDisabled={!this.state.pluginEnabled} onClick={this.handleToggleCleanupModal}>
+                                <Button className="ds-margin-top" variant="primary" isDisabled={!this.state.pluginEnabled} onClick={this.toggleCleanupModal}>
                                     Run Task
                                 </Button>
                             </GridItem>

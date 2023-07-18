@@ -53,7 +53,7 @@ export class ErrorLogMonitor extends React.Component {
         this.sev_all_errs = [sev_emerg, sev_crit, sev_alert, sev_err];
         this.sev_all_info = [sev_warn, sev_notice, sev_info, sev_debug];
 
-        this.handleRefreshErrorLog = this.handleRefreshErrorLog.bind(this);
+        this.refreshErrorLog = this.refreshErrorLog.bind(this);
         this.errorRefreshCont = this.errorRefreshCont.bind(this);
         this.handleErrorChange = this.handleErrorChange.bind(this);
         this.handleSevChange = this.handleSevChange.bind(this);
@@ -67,7 +67,7 @@ export class ErrorLogMonitor extends React.Component {
 
     componentDidMount() {
         this.props.enableTree();
-        this.handleRefreshErrorLog();
+        this.refreshErrorLog();
     }
 
     componentWillUnmount() {
@@ -75,7 +75,7 @@ export class ErrorLogMonitor extends React.Component {
         clearInterval(this.state.errorlog_cont_refresh);
     }
 
-    handleRefreshErrorLog () {
+    refreshErrorLog () {
         this.setState({
             errorReloading: true
         });
@@ -84,25 +84,25 @@ export class ErrorLogMonitor extends React.Component {
         cockpit
                 .spawn(cmd, { superuser: true, err: "message" })
                 .done(data => {
-                    if (this.state.errorSevLevel !== "Everything") {
+                    if (this.state.errorSevLevel != "Everything") {
                         // Filter Data
                         const lines = data.split('\n');
                         let new_data = "";
                         for (let i = 0; i < lines.length; i++) {
                             let line = "";
-                            if (this.state.errorSevLevel === "Error Messages") {
+                            if (this.state.errorSevLevel == "Error Messages") {
                                 for (const lev of this.sev_all_errs) {
-                                    if (lines[i].indexOf(lev) !== -1) {
+                                    if (lines[i].indexOf(lev) != -1) {
                                         line = lines[i] + "\n";
                                     }
                                 }
-                            } else if (this.state.errorSevLevel === "Info Messages") {
+                            } else if (this.state.errorSevLevel == "Info Messages") {
                                 for (const lev of this.sev_all_info) {
-                                    if (lines[i].indexOf(lev) !== -1) {
+                                    if (lines[i].indexOf(lev) != -1) {
                                         line = lines[i] + "\n";
                                     }
                                 }
-                            } else if (lines[i].indexOf(this.sev_levels[this.state.errorSevLevel]) !== -1) {
+                            } else if (lines[i].indexOf(this.sev_levels[this.state.errorSevLevel]) != -1) {
                                 line = lines[i] + "\n";
                             }
                             // Add the filtered line to new data
@@ -120,16 +120,13 @@ export class ErrorLogMonitor extends React.Component {
 
     errorRefreshCont(e) {
         if (e.target.checked) {
-            this.setState({
-                errorlog_cont_refresh: setInterval(this.handleRefreshErrorLog, 2000),
-                errorRefreshing: e.target.checked,
-            });
+            this.state.errorlog_cont_refresh = setInterval(this.refreshErrorLog, 2000);
         } else {
             clearInterval(this.state.errorlog_cont_refresh);
-            this.setState({
-                errorRefreshing: e.target.checked,
-            });
         }
+        this.setState({
+            errorRefreshing: e.target.checked,
+        });
     }
 
     handleErrorChange(e) {
@@ -138,7 +135,7 @@ export class ErrorLogMonitor extends React.Component {
             {
                 errorLines: value
             }
-        ), this.handleRefreshErrorLog);
+        ), this.refreshErrorLog);
     }
 
     handleSevChange(e) {
@@ -146,18 +143,17 @@ export class ErrorLogMonitor extends React.Component {
 
         this.setState({
             errorSevLevel: value,
-        }, this.handleRefreshErrorLog);
+        }, this.refreshErrorLog);
     }
 
     render() {
         let spinner = "";
         if (this.state.errorReloading) {
-            spinner = (
+            spinner =
                 <div>
                     <Spinner size="sm" />
                     Reloading errors log...
-                </div>
-            );
+                </div>;
         }
 
         return (
@@ -166,13 +162,12 @@ export class ErrorLogMonitor extends React.Component {
                     <GridItem span={3}>
                         <TextContent>
                             <Text component={TextVariants.h3}>
-                                Errors Log
-                                <FontAwesomeIcon
+                                Errors Log <FontAwesomeIcon
                                     size="lg"
                                     className="ds-left-margin ds-refresh"
                                     icon={faSyncAlt}
                                     title="Refresh error log"
-                                    onClick={this.handleRefreshErrorLog}
+                                    onClick={this.refreshErrorLog}
                                 />
                             </Text>
                         </TextContent>

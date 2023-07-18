@@ -2,13 +2,17 @@ import React from 'react';
 import {
     Alert,
     Card,
+    CardHeader,
     CardBody,
+    CardFooter,
     CardTitle,
     Pagination,
+    Popover,
     SimpleList,
     SimpleListItem,
     Spinner,
     Text,
+    TextArea,
     TextContent,
     TextVariants,
     Wizard,
@@ -80,7 +84,7 @@ class GenericUpdate extends React.Component {
             adding: true,
         };
 
-        this.handleNext = ({ id }) => {
+        this.onNext = ({ id }) => {
             this.setState({
                 stepIdReached: this.state.stepIdReached < id ? id : this.state.stepIdReached
             });
@@ -94,31 +98,31 @@ class GenericUpdate extends React.Component {
                 // Create the LDAP entry.
                 const myLdifArray = this.state.ldifArray;
                 createLdapEntry(this.props.editorLdapServer,
-                                myLdifArray,
-                                (result) => {
-                                    this.setState({
-                                        commandOutput: result.errorCode === 0 ? 'Successfully added entry!' : 'Failed to add entry, error: ' + result.errorCode,
-                                        resultVariant: result.errorCode === 0 ? 'success' : 'danger',
-                                        adding: false,
-                                    }, () => {
-                                        this.props.onReload();
-                                    });
-                                    // Update the wizard operation information.
-                                    const myDn = myLdifArray[0].substring(4);
-                                    const opInfo = {
-                                        operationType: 'ADD',
-                                        resultCode: result.errorCode,
-                                        time: Date.now(),
-                                        entryDn: myDn,
-                                        relativeDn: this.state.namingAttrVal
-                                    };
-                                    this.props.setWizardOperationInfo(opInfo);
-                                }
+                    myLdifArray,
+                    (result) => {
+                        this.setState({
+                            commandOutput: result.errorCode === 0 ? 'Successfully added entry!' : 'Failed to add entry, error: ' + result.errorCode ,
+                            resultVariant: result.errorCode === 0 ? 'success' : 'danger',
+                            adding: false,
+                        }, () => {
+                            this.props.onReload();
+                        });
+                        // Update the wizard operation information.
+                        const myDn = myLdifArray[0].substring(4);
+                        const opInfo = {
+                            operationType: 'ADD',
+                            resultCode: result.errorCode,
+                            time: Date.now(),
+                            entryDn: myDn,
+                            relativeDn: this.state.namingAttrVal
+                        }
+                        this.props.setWizardOperationInfo(opInfo);
+                    }
                 );
             }
         };
 
-        this.handleBack = ({ id }) => {
+        this.onBack = ({ id }) => {
             if (id === 3) {
                 // true ==> Do not check the attribute selection when navigating back.
                 this.updateValuesTableRows(true);
@@ -136,61 +140,57 @@ class GenericUpdate extends React.Component {
         // FIXME:
         // disableCheckbox doesn't exist for version 2020.06!
         // Need to upgrade...
-        const attributesArray = [];
+        let attributesArray = [];
         let namingAttr = '';
         switch (this.props.entryType) {
-        case ENTRY_TYPE.user:
-            this.requiredAttributes = ['cn', 'sn'];
-            attributesArray.push({
-                cells: ['cn', 'Person'],
-                selected: true,
-                isAttributeSelected: true,
-                // disableCheckbox: true
-                disableSelection: true
-            });
-            attributesArray.push({
-                cells: ['sn', 'Person'],
-                selected: true,
-                isAttributeSelected: true,
-                // disableCheckbox: true
-                disableSelection: true
-            });
-            PERSON_OPT_ATTRS.map(attr => {
-                attributesArray.push({ cells: [attr, 'Person'] });
-                return [];
-            });
+            case ENTRY_TYPE.user:
+                this.requiredAttributes = ['cn', 'sn'];
+                attributesArray.push({
+                    cells: ['cn', 'Person'],
+                    selected: true,
+                    isAttributeSelected: true,
+                    // disableCheckbox: true
+                    disableSelection: true
+                });
+                attributesArray.push({
+                    cells: ['sn', 'Person'],
+                    selected: true,
+                    isAttributeSelected: true,
+                    // disableCheckbox: true
+                    disableSelection: true
+                });
+                PERSON_OPT_ATTRS.map(attr => {
+                    attributesArray.push({ cells: [attr, 'Person'] });
+                });
 
-            ORG_PERSON_ATTRS.map(attr => {
-                attributesArray.push({ cells: [attr, 'OrganizationalPerson'] });
-                return [];
-            });
-            INET_ORG_ATTRS.map(attr => {
-                attributesArray.push({ cells: [attr, 'InetOrgPerson'] });
-                return [];
-            });
-            break;
-        case ENTRY_TYPE.ou:
-            this.requiredAttributes = ['ou'];
+                ORG_PERSON_ATTRS.map(attr => {
+                    attributesArray.push({ cells: [attr, 'OrganizationalPerson'] });
+                });
+                INET_ORG_ATTRS.map(attr => {
+                    attributesArray.push({ cells: [attr, 'InetOrgPerson'] });
+                });
+                break;
+            case ENTRY_TYPE.ou:
+                this.requiredAttributes = ['ou'];
 
-            attributesArray.push({
-                cells: ['ou', 'OrganizationalUnit'],
-                selected: true,
-                isAttributeSelected: true,
-                // disableCheckbox: true
-                disableSelection: true,
-                namingAttrVal: "",
-            });
+                attributesArray.push({
+                    cells: ['ou', 'OrganizationalUnit'],
+                    selected: true,
+                    isAttributeSelected: true,
+                    // disableCheckbox: true
+                    disableSelection: true,
+                    namingAttrVal: "",
+                });
 
-            OU_OPT_ATTRS.map(attr => {
-                attributesArray.push({ cells: [attr, 'OrganizationalUnit'] });
-                return [];
-            });
-            namingAttr = 'ou';
-            break;
-        case ENTRY_TYPE.other:
-            break;
-        default:
-            console.log(`Unknown type of LDAP entry (${this.props.entryType})`);
+                OU_OPT_ATTRS.map(attr => {
+                    attributesArray.push({ cells: [attr, 'OrganizationalUnit'] });
+                });
+                namingAttr = 'ou';
+                break;
+            case ENTRY_TYPE.other:
+                break;
+            default:
+                console.log(`Unknown type of LDAP entry (${this.props.entryType})`);
         }
 
         this.setState({
@@ -198,21 +198,21 @@ class GenericUpdate extends React.Component {
             itemCount: attributesArray.length,
             rowsAttrs: attributesArray,
             pagedRowsAttrs: attributesArray.slice(0, this.state.perPage),
-            namingAttr,
+            namingAttr: namingAttr,
         });
     }
 
-    handleSetPage = (_event, pageNumber) => {
+    onSetPage = (_event, pageNumber) => {
         this.setState({
             page: pageNumber,
             pagedRowsAttrs: this.getAttributesToShow(pageNumber, this.state.perPage)
         });
     };
 
-    handlePerPageSelect = (_event, perPage) => {
+    onPerPageSelect = (_event, perPage) => {
         this.setState({
             page: 1,
-            perPage,
+            perPage: perPage,
             pagedRowsAttrs: this.getAttributesToShow(1, perPage)
         });
     };
@@ -230,18 +230,18 @@ class GenericUpdate extends React.Component {
 
     isAttributeRequired = attr => {
         switch (this.props.entryType) {
-        case ENTRY_TYPE.user:
-            return PERSON_REQ_ATTRS.includes(attr);
-        case ENTRY_TYPE.ou:
-            return OU_REQ_ATTRS.includes(attr);
-        case ENTRY_TYPE.other:
-            return PERSON_REQ_ATTRS.includes(attr);
-        default:
-            console.log(`Unknown type of LDAP entry (${this.props.entryType})`);
+            case ENTRY_TYPE.user:
+                return PERSON_REQ_ATTRS.includes(attr);
+            case ENTRY_TYPE.ou:
+                return OU_REQ_ATTRS.includes(attr);
+            case ENTRY_TYPE.other:
+                return PERSON_REQ_ATTRS.includes(attr);
+            default:
+                console.log(`Unknown type of LDAP entry (${this.props.entryType})`);
         }
-    };
+    }
 
-    handleSelect = (event, isSelected, rowId) => {
+    onSelect = (event, isSelected, rowId) => {
         let rows;
         if (rowId === -1) {
             // Process the full table entries ( rowsAttrs )
@@ -268,12 +268,12 @@ class GenericUpdate extends React.Component {
                 allAttributesSelected: isSelected
                 // TEKO - May 2021 // selectedAttributes
             },
-                          () => {
-                              this.setState({
-                                  pagedRowsAttrs: this.getAttributesToShow(this.state.page, this.state.perPage)
-                              });
-                              this.updateValuesTableRows();
-                          });
+            () => {
+                this.setState({
+                    pagedRowsAttrs: this.getAttributesToShow(this.state.page, this.state.perPage)
+                });
+                this.updateValuesTableRows();
+            });
         } else {
             // Quick hack until the code is upgraded to a version that supports "disableCheckbox"
             // if (this.state.pagedRowsAttrs[rowId].disableCheckbox === true) {
@@ -288,27 +288,27 @@ class GenericUpdate extends React.Component {
             // The property 'isAttributeSelected' is used to build the LDAP entry to add.
             // The row ID cannot be used since it changes with the pagination.
             const attrName = this.state.pagedRowsAttrs[rowId].cells[0];
-            const allItems = [...this.state.rowsAttrs];
+            let allItems = [...this.state.rowsAttrs];
             const index = allItems.findIndex(item => item.cells[0] === attrName);
             allItems[index].isAttributeSelected = isSelected;
             const selectedAttributes = allItems
-                    .filter(item => item.isAttributeSelected)
-                    .map(selectedAttr => selectedAttr.cells[0]);
+                .filter(item => item.isAttributeSelected)
+                .map(selectedAttr => selectedAttr.cells[0]);
             this.setState({
                 rowsAttrs: allItems,
                 pagedRowsAttrs: rows,
                 selectedAttributes
             },
-                          () => this.updateValuesTableRows());
+            () => this.updateValuesTableRows());
         }
     };
 
     updateValuesTableRows = (skipAttributeSelection) => {
         const newSelectedAttrs = this.state.allAttributesSelected
             ? ['cn', 'sn',
-                ...PERSON_OPT_ATTRS,
-                ...ORG_PERSON_ATTRS,
-                ...INET_ORG_ATTRS]
+            ...PERSON_OPT_ATTRS,
+            ...ORG_PERSON_ATTRS,
+            ...INET_ORG_ATTRS]
             : [...this.state.selectedAttributes];
 
         let editableTableData = [];
@@ -323,30 +323,31 @@ class GenericUpdate extends React.Component {
                     val: '',
                     required: false,
                     namingAttr: false,
-                };
+                }
                 return obj;
             });
             editableTableData.sort((a, b) => (a.attr > b.attr) ? 1 : -1);
-            if (this.props.entryType === ENTRY_TYPE.ou) {
+            if (this.props.entryType == ENTRY_TYPE.ou) {
                 // Organizational Unit
                 for (const attr of editableTableData) {
                     if (attr.attr === "ou") {
                         // OU naming attribute
-                        namingRowID = attr.id;
+                        namingRowID = attr.id,
                         namingAttrVal = editableTableData[0].attr + "=" + editableTableData[0].val;
+
                         break;
                     }
                 }
             } else {
                 // Other
-                namingRowID = editableTableData[0].id;
+                namingRowID = editableTableData[0].id,
                 namingAttrVal = editableTableData[0].attr + "=" + editableTableData[0].val;
             }
         } else {
             if (skipAttributeSelection) { // Do not check the attribute selection ( because it has not changed ).
                 editableTableData = [...this.state.savedRows];
             } else {
-                const arrayOfAttrObjects = [...this.state.savedRows];
+                let arrayOfAttrObjects = [...this.state.savedRows];
                 for (const myAttr of newSelectedAttrs) {
                     const found = arrayOfAttrObjects.find(el => el.attr === myAttr);
                     if (found === undefined) {
@@ -363,21 +364,21 @@ class GenericUpdate extends React.Component {
                 }
                 // Remove the newly unselected attribute(s).
                 editableTableData = arrayOfAttrObjects
-                        .filter(datum => {
-                            const attrName = datum.attr;
-                            const found = newSelectedAttrs.find(attr => attr === attrName);
-                            return (found !== undefined);
-                        });
+                    .filter(datum => {
+                        const attrName = datum.attr;
+                        const found = newSelectedAttrs.find(attr => attr === attrName);
+                        return (found !== undefined);
+                    });
 
                 // Sort the rows
                 editableTableData.sort((a, b) => (a.attr > b.attr) ? 1 : -1);
 
-                if (this.props.entryType === ENTRY_TYPE.ou && namingRowID === -1) {
+                if (this.props.entryType == ENTRY_TYPE.ou && namingRowID === -1) {
                     // Organizational Unit
                     for (const attr of editableTableData) {
                         if (attr.attr === "ou") {
                             // OU naming attribute
-                            namingRowID = attr.id;
+                            namingRowID = attr.id,
                             namingAttrVal = editableTableData[0].attr + "=" + editableTableData[0].val;
                             break;
                         }
@@ -409,45 +410,45 @@ class GenericUpdate extends React.Component {
         }
         this.setState({
             namingRowID,
-            namingAttrVal,
+            namingAttrVal: namingAttrVal,
         });
     };
 
     saveCurrentRows = (savedRows, namingID) => {
         this.setState({ savedRows },
-                      () => {
-                          // Update the naming information after the new rows have been saved.
-                          if (namingID !== -1) { // The namingID is set to -1 if the row is not the naming one.
-                              this.setNamingRowID(namingID);
-                          }
-                      });
+            () => {
+                // Update the naming information after the new rows have been saved.
+                if (namingID != -1) { // The namingID is set to -1 if the row is not the naming one.
+                    this.setNamingRowID(namingID);
+                }
+            });
     };
 
     generateLdifData = () => {
         switch (this.props.entryType) {
-        case ENTRY_TYPE.user:
-            this.generateLdifDataUser();
-            break;
-        case ENTRY_TYPE.ou:
-            this.generateLdifDataOu();
-            break;
-        case ENTRY_TYPE.other:
-            this.generateLdifDataOther();
-            break;
-        default:
-            console.log(`Unknown type of LDAP entry (${this.props.entryType})`);
+            case ENTRY_TYPE.user:
+                this.generateLdifDataUser();
+                break;
+            case ENTRY_TYPE.ou:
+                this.generateLdifDataOu();
+                break;
+            case ENTRY_TYPE.other:
+                this.generateLdifDataOther();
+                break;
+            default:
+                console.log(`Unknown type of LDAP entry (${this.props.entryType})`);
         }
-    };
+    }
 
     generateLdifDataUser = () => {
         // ObjectClass 'Person' is required.
-        const objectClassData = ['ObjectClass: top', 'ObjectClass: Person'];
+        let objectClassData = ['ObjectClass: top', 'ObjectClass: Person'];
         if (this.state.allAttributesSelected) {
             objectClassData.push('ObjectClass: OrganizationalPerson',
                                  'ObjectClass: InetOrgPerson');
         }
 
-        const valueData = [];
+        let valueData = [];
         for (const item of this.state.savedRows) {
             const attrName = item.attr;
             valueData.push(`${attrName}: ${item.val}`);
@@ -471,16 +472,16 @@ class GenericUpdate extends React.Component {
             ...valueData
         ];
         this.setState({ ldifArray });
-    };
+    }
 
     generateLdifDataOu = () => {
         const objectClassData = ['ObjectClass: top', 'ObjectClass: organizationalUnit'];
-        const valueData = [];
+        let valueData = [];
         let rdnValue = "";
         for (const item of this.state.savedRows) {
             const attrName = item.attr;
             valueData.push(`${attrName}: ${item.val}`);
-            if (attrName === "ou") {
+            if (attrName == "ou") {
                 rdnValue = item.val;
             }
         }
@@ -489,9 +490,9 @@ class GenericUpdate extends React.Component {
             `dn: ou=${rdnValue},${this.props.wizardEntryDn}`,
             ...objectClassData,
             ...valueData
-        ];
+        ]
         this.setState({ ldifArray });
-    };
+    }
 
     render () {
         const {
@@ -511,15 +512,15 @@ class GenericUpdate extends React.Component {
                     itemCount={itemCount}
                     page={page}
                     perPage={perPage}
-                    onSetPage={this.handleSetPage}
+                    onSetPage={this.onSetPage}
                     widgetId="pagination-options-menu-add-entry"
-                    onPerPageSelect={this.handlePerPageSelect}
+                    onPerPageSelect={this.onPerPageSelect}
                     isCompact
                 />
                 <Table
                     cells={columnsAttrs}
                     rows={pagedRowsAttrs}
-                    onSelect={this.handleSelect}
+                    onSelect={this.onSelect}
                     variant={TableVariant.compact}
                     aria-label="Pagination Attributes"
                 >
@@ -537,7 +538,7 @@ class GenericUpdate extends React.Component {
         const missingRdn = (rdnValue === '' || rdnValue === undefined);
 
         const valuesStep = (
-            <>
+            <React.Fragment>
                 <Alert
                     variant={alertVariant}
                     isInline
@@ -546,7 +547,8 @@ class GenericUpdate extends React.Component {
                     {!missingRdn &&
                         <>
                             The full DN of the entry will be: <strong>{namingAttrVal},{this.props.wizardEntryDn}</strong>
-                        </>}
+                        </>
+                    }
                 </Alert>
 
                 <EditableTable
@@ -559,7 +561,7 @@ class GenericUpdate extends React.Component {
                     saveCurrentRows={this.saveCurrentRows}
                     namingAttr={this.state.namingAttr}
                 />
-            </>
+            </React.Fragment>
         );
 
         const ldifListItems = ldifArray.map((line, index) =>
@@ -580,7 +582,8 @@ class GenericUpdate extends React.Component {
                         { (ldifListItems.length > 0) &&
                             <SimpleList aria-label="LDIF data">
                                 {ldifListItems}
-                            </SimpleList>}
+                            </SimpleList>
+                        }
                     </CardBody>
                 </Card>
             </div>
@@ -590,7 +593,7 @@ class GenericUpdate extends React.Component {
         const ldifLines = ldifArray.map(line => {
             nb++;
             return { data: line, id: nb };
-        });
+        })
 
         const reviewStep = (
             <div>
@@ -604,7 +607,8 @@ class GenericUpdate extends React.Component {
                         <div>
                             <Spinner className="ds-left-margin" size="md" />
                             &nbsp;&nbsp;Adding entry ...
-                        </div>}
+                        </div>
+                    }
                 </Alert>
                 {resultVariant === 'danger' &&
                     <Card isSelectable>
@@ -614,7 +618,8 @@ class GenericUpdate extends React.Component {
                                 <h6 key={line.id}>{line.data}</h6>
                             ))}
                         </CardBody>
-                    </Card>}
+                    </Card>
+                }
             </div>
         );
 
@@ -670,18 +675,16 @@ class GenericUpdate extends React.Component {
                 ? 'Add An Organizational Unit'
                 : 'Add A New LDAP Entry';
 
-        const desc = (
-            <>
-                Parent DN: &nbsp;&nbsp;<strong>{this.props.wizardEntryDn}</strong>
-            </>
-        );
+        const desc = <>
+            Parent DN: &nbsp;&nbsp;<strong>{this.props.wizardEntryDn}</strong>
+        </>;
 
         return (
             <Wizard
                 isOpen={this.props.isWizardOpen}
-                onClose={this.props.handleToggleWizard}
-                onNext={this.handleNext}
-                onBack={this.handleBack}
+                onClose={this.props.toggleOpenWizard}
+                onNext={this.onNext}
+                onBack={this.onBack}
                 title={wizardTitle}
                 description={desc}
                 steps={addSteps}

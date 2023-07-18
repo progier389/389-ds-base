@@ -313,29 +313,6 @@ class DSLdapObject(DSLogging, DSLint):
 
         self.set(key, value, action=ldap.MOD_ADD)
 
-    def add_many(self, *args):
-        """Add many key, value pairs in a single operation.
-        This is useful for configuration changes that require
-        atomic operation, and ease of use.
-
-        An example of usage is add_many((key, value), (key, value))
-
-        No wrapping list is needed for the arguments.
-
-        :param *args: tuples of key,value to replace.
-        :type *args: (str, str)
-        """
-
-        mods = []
-        for arg in args:
-            if isinstance(arg[1], list) or isinstance(arg[1], tuple):
-                value = ensure_list_bytes(arg[1])
-            else:
-                value = [ensure_bytes(arg[1])]
-            mods.append((ldap.MOD_ADD, ensure_str(arg[0]), value))
-        return _modify_ext_s(self._instance,self._dn, mods, serverctrls=self._server_controls,
-                                            clientctrls=self._client_controls, escapehatch='i am sure')
-
     # Basically what it means;
     def replace(self, key, value):
         """Replace an attribute with a value
@@ -771,7 +748,7 @@ class DSLdapObject(DSLogging, DSLint):
 
         :param key: An attribute name
         :type key: str
-        :returns: A list of bytes values
+        :returns: A single bytes value
         :raises: ValueError - if instance is offline
         """
 
@@ -782,7 +759,7 @@ class DSLdapObject(DSLogging, DSLint):
 
         :param key: An attribute name
         :type key: str
-        :returns: A single UTF8 value
+        :returns: A single bytes value
         :raises: ValueError - if instance is offline
         """
 
@@ -793,7 +770,7 @@ class DSLdapObject(DSLogging, DSLint):
 
         :param key: An attribute name
         :type key: str
-        :returns: A single lowered UTF8 value
+        :returns: A single bytes value
         :raises: ValueError - if instance is offline
         """
 
@@ -808,7 +785,7 @@ class DSLdapObject(DSLogging, DSLint):
 
         :param key: An attribute name
         :type key: str
-        :returns: A list of UTF8 values
+        :returns: A single bytes value
         :raises: ValueError - if instance is offline
         """
 
@@ -819,7 +796,7 @@ class DSLdapObject(DSLogging, DSLint):
 
         :param key: An attribute name
         :type key: str
-        :returns: A list of lowered UTF8 values
+        :returns: A single bytes value
         :raises: ValueError - if instance is offline
         """
 
@@ -830,7 +807,7 @@ class DSLdapObject(DSLogging, DSLint):
 
         :param key: An attribute name
         :type key: str
-        :returns: A single int value
+        :returns: A single bytes value
         :raises: ValueError - if instance is offline
         """
 
@@ -841,7 +818,7 @@ class DSLdapObject(DSLogging, DSLint):
 
         :param key: An attribute name
         :type key: str
-        :returns: A list of int values
+        :returns: A single bytes value
         :raises: ValueError - if instance is offline
         """
 

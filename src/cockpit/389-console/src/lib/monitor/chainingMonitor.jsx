@@ -26,8 +26,7 @@ export class ChainingMonitor extends React.Component {
                 <Form isHorizontal>
                     <TextContent>
                         <Text component={TextVariants.h2}>
-                            <FontAwesomeIcon size="sm" icon={faLink} /> {this.props.suffix} (<b>{this.props.bename}</b>)
-                            <FontAwesomeIcon
+                            <FontAwesomeIcon size="sm" icon={faLink} /> {this.props.suffix} (<b>{this.props.bename}</b>) <FontAwesomeIcon
                                 className="ds-left-margin ds-refresh"
                                 icon={faSyncAlt}
                                 title="Refresh chaining monitor"

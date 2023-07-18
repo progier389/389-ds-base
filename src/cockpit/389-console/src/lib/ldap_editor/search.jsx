@@ -1,4 +1,3 @@
-import cockpit from "cockpit";
 import React from "react";
 import {
     Button,
@@ -48,6 +47,7 @@ import { ENTRY_MENU } from './lib/constants.jsx';
 import EditorTableView from './tableView.jsx';
 import { log_cmd, valid_dn } from '../tools.jsx';
 import GenericWizard from './wizards/genericWizard.jsx';
+
 
 export class SearchDatabase extends React.Component {
     constructor (props) {
@@ -100,11 +100,12 @@ export class SearchDatabase extends React.Component {
             page: 0,
             perPage: 10,
             pagedRows: [],
+            loading: false,
             wizardName: '',
             isWizardOpen: false,
             wizardEntryDn: '',
             treeViewRootSuffixes: [], // TODO when aci's are ready (is there a better list of suffixes?)
-        };
+        }
 
         this.initialResultText = 'Loading...';
 
@@ -114,7 +115,7 @@ export class SearchDatabase extends React.Component {
             });
         };
 
-        this.handleToggle = isExpanded => {
+        this.onToggle = isExpanded => {
             this.setState({
                 isExpanded
             });
@@ -135,19 +136,19 @@ export class SearchDatabase extends React.Component {
         };
 
         // Custom filter attributes
-        this.handleCustomAttrToggle = isCustomAttrOpen => {
+        this.onCustomAttrToggle = isCustomAttrOpen => {
             this.setState({
                 isCustomAttrOpen,
             });
         };
-        this.handleCustomAttrClear = () => {
+        this.onCustomAttrClear = () => {
             this.setState({
                 customSearchAttrs: [],
                 isCustomAttrOpen: false
             });
         };
 
-        this.handleCustomAttrChange = (event, selection) => {
+        this.onCustomAttrChange = (event, selection) => {
             const { customSearchAttrs } = this.state;
             if (customSearchAttrs.includes(selection)) {
                 this.setState(
@@ -183,17 +184,17 @@ export class SearchDatabase extends React.Component {
                     }
                 }
                 attrs = attrs.concat(this.state.customSearchAttrs);
-                if (attrs.length === 0) {
+                if (attrs.length == 0) {
                     return;
                 }
                 if (attrs.length > 1) {
                     searchFilter = "(|";
                     for (const attr of attrs) {
-                        searchFilter += "(" + attr + "=*" + value + "*)";
+                        searchFilter += "(" + attr + "=*" + value + "*)"
                     }
                     searchFilter += ")";
                 } else {
-                    searchFilter = "(" + attrs[0] + "=*" + value + "*)";
+                    searchFilter = "(" + attrs[0] + "=*" + value + "*)"
                 }
             } else {
                 // Value is the LDAP search filter
@@ -202,14 +203,14 @@ export class SearchDatabase extends React.Component {
             return searchFilter;
         };
 
-        this.handleSearchChange = (event, value) => {
+        this.onSearchChange = (value, event) => {
             this.setState({
                 searchText: value,
                 searchFilter: this.buildSearchFilter(value),
             });
         };
 
-        this.handleSearch = () => {
+        this.onSearch = () => {
             if (!this.state.searchFilter) {
                 return;
             }
@@ -219,7 +220,7 @@ export class SearchDatabase extends React.Component {
                 isExpanded: false,
                 searching: true,
             }, () => {
-                const params = {
+                let params = {
                     serverId: this.props.serverId,
                     searchBase: this.state.searchBase,
                     searchFilter: this.state.searchFilter,
@@ -264,11 +265,11 @@ export class SearchDatabase extends React.Component {
             });
         };
 
-        this.handleClearSearchBase = () => {
+        this.clearSearchBase = () => {
             this.setState({
                 searchBase: this.state.searchSuffix
             });
-        };
+        }
 
         this.handleConfirmModalToggle = () => {
             this.setState(({ isConfirmModalOpen }) => ({
@@ -277,6 +278,7 @@ export class SearchDatabase extends React.Component {
         };
 
         this.handleChange = this.handleChange.bind(this);
+        this.handleSearchChange = this.handleSearchChange.bind(this);
         this.handleSuffixChange = this.handleSuffixChange.bind(this);
         this.handleCustomAttrChange = this.handleCustomAttrChange.bind(this);
         this.getPageData = this.getPageData.bind(this);
@@ -287,9 +289,9 @@ export class SearchDatabase extends React.Component {
     }
 
     componentDidMount() {
-        const suffixList = this.props.suffixList;
+        const suffixList =  this.props.suffixList;
         const searchBase = this.props.searchBase;
-        let baseDN = searchBase; // Drop down list of selected suffix
+        let baseDN = searchBase;  // Drop down list of selected suffix
         for (const suffix of suffixList) {
             if (baseDN.includes(suffix)) {
                 baseDN = suffix;
@@ -297,9 +299,9 @@ export class SearchDatabase extends React.Component {
             }
         }
         this.setState({
-            searchBase: searchBase || (suffixList.length > 0 ? suffixList[0] : ""),
+            searchBase: searchBase ? searchBase : suffixList.length > 0 ? suffixList[0] : "",
             searchSuffix: this.props.suffixList.length > 0 ? this.props.suffixList[0] : "",
-            baseDN
+            baseDN: baseDN
         });
     }
 
@@ -320,21 +322,17 @@ export class SearchDatabase extends React.Component {
                             {entryArray.map((line) => (
                                 <div key={line.attribute + line.value}>
                                     <strong>{line.attribute}</strong>
-                                    {line.value.toLowerCase() === ": ldapsubentry"
-                                        ? <span className="ds-info-color">{line.value}</span>
-                                        : line.attribute.toLowerCase() === "userpassword"
-                                            ? ": ********"
-                                            : line.attribute.toLowerCase() === "jpegphoto"
-                                                ? (
-                                                    <div>
-                                                        <img
-                                                            src={`data:image/png;base64,${line.value.substr(3)}`} // strip ':: '
-                                                            alt=''
-                                                            style={{ width: '256px' }}
-                                                        />
-                                                    </div>
-                                                )
-                                                : line.value}
+                                    {line.value.toLowerCase() === ": ldapsubentry" ? <span className="ds-info-color">{line.value}</span> :
+                                     line.attribute.toLowerCase() === "userpassword" ? ": ********" :
+                                     line.attribute.toLowerCase() === "jpegphoto" ?
+                                     <div><img
+                                                src={`data:image/png;base64,${line.value.substr(3)}`} // strip ':: '
+                                                alt=''
+                                                style={{ width: '256px' }} // height will adjust automatically.
+                                            />
+                                     </div>
+                                    :
+                                    line.value}
                                 </div>
                             ))}
                         </>
@@ -361,97 +359,92 @@ export class SearchDatabase extends React.Component {
                     let entryState = "";
                     let entryStateIcon = "";
 
-                    entryStateIcon = <LockIcon className="ds-pf-blue-color" />;
+                    entryStateIcon = <LockIcon className="ds-pf-blue-color"/>
                     const cmd = ["dsidm", "-j", "ldapi://%2fvar%2frun%2fslapd-" + this.props.serverId + ".socket",
                         "-b", info.dn, info.isRole ? "role" : "account", "entry-status", info.dn];
                     log_cmd("processResults", "Checking if entry is activated", cmd);
                     cockpit
-                            .spawn(cmd, { superuser: true, err: 'message' })
-                            .done(content => {
-                                if (info.isLockable) {
-                                    const status = JSON.parse(content);
-                                    entryState = status.info.state;
-                                    if (entryState === 'inactivity limit exceeded' || entryState.startsWith("probably activated or")) {
-                                        entryStateIcon = <ExclamationTriangleIcon className="ds-pf-yellow-color ct-icon-exclamation-triangle" />;
-                                    }
+                        .spawn(cmd, { superuser: true, err: 'message' })
+                        .done(content => {
+                            if (info.isLockable) {
+                                const status = JSON.parse(content);
+                                entryState = status.info.state;
+                                if (entryState === 'inactivity limit exceeded' || entryState.startsWith("probably activated or")) {
+                                    entryStateIcon = <ExclamationTriangleIcon className="ds-pf-yellow-color ct-icon-exclamation-triangle"/>
                                 }
-                            })
-                            .fail(err => {
-                                const errMsg = JSON.parse(err);
-                                if ((info.isLockable) && !(errMsg.desc.includes("Root suffix can't be locked or unlocked"))) {
-                                    console.error(
-                                        "processResults",
-                                        `${info.isRole ? "role" : "account"} account entry-status operation failed`,
-                                        errMsg.desc
-                                    );
-                                    entryState = "error: please, check browser logs";
-                                    entryStateIcon = <ExclamationCircleIcon className="ds-pf-red-color ct-exclamation-circle" />;
-                                }
-                            })
-                            .finally(() => {
+                            }
+                        })
+                        .fail(err => {
+                            const errMsg = JSON.parse(err);
+                            if ((info.isLockable) && !(errMsg.desc.includes("Root suffix can't be locked or unlocked"))) {
+                                console.error(
+                                    "processResults",
+                                    `${info.isRole ? "role" : "account"} account entry-status operation failed`,
+                                    errMsg.desc
+                                );
+                                entryState = "error: please, check browser logs";
+                                entryStateIcon = <ExclamationCircleIcon className="ds-pf-red-color ct-exclamation-circle"/>
+                            }
+                        })
+                        .finally(() => {
                             // TODO Test for a JPEG photo!!!
-                                if (!info.isLockable) {
-                                    console.info("processResults:", `${info.dn} entry is not lockable`);
-                                }
+                            if (!info.isLockable) {
+                                console.info("processResults:", `${info.dn} entry is not lockable`);
+                            }
 
-                                let ldapsubentryIcon = "";
-                                let entryStateIconFinal = "";
-                                if (info.ldapsubentry) {
-                                    ldapsubentryIcon = <InfoCircleIcon title="This is a hidden LDAP subentry" className="ds-pf-blue-color ds-info-icon" />;
-                                }
-                                if ((entryState !== "") && (entryStateIcon !== "") && (entryState !== "activated")) {
-                                    entryStateIconFinal = (
-                                        <Tooltip
+                            let ldapsubentryIcon = "";
+                            let entryStateIconFinal = "";
+                            if (info.ldapsubentry) {
+                                ldapsubentryIcon = <InfoCircleIcon title="This is a hidden LDAP subentry" className="ds-pf-blue-color ds-info-icon" />;
+                            }
+                            if ((entryState !== "") && (entryStateIcon !== "") && (entryState !== "activated")) {
+                                entryStateIconFinal = <Tooltip
                                     position="bottom"
                                     content={
                                         <div className="ds-info-icon">
                                             {entryState}
                                         </div>
                                     }
-                                        >
-                                            <a className="ds-font-size-md">{entryStateIcon}</a>
-                                        </Tooltip>
-                                    );
-                                }
+                                >
+                                    <a className="ds-font-size-md">{entryStateIcon}</a>
+                                </Tooltip>;
+                            }
 
-                                const dn = (
-                                    <>
-                                        {info.dn} {ldapsubentryIcon} {entryStateIconFinal}
-                                    </>
-                                );
+                            let dn = <>
+                                {info.dn} {ldapsubentryIcon} {entryStateIconFinal}
+                            </>
 
-                                resultRows.push(
-                                    {
-                                        isOpen: false,
-                                        cells: [
-                                            { title: dn },
-                                            info.numSubordinates,
-                                            info.modifyTimestamp,
-                                        ],
-                                        rawdn: info.dn,
-                                        isLockable: info.isLockable,
-                                        isRole: info.isRole,
-                                        entryState
-                                    },
-                                    {
-                                        parent: rowNumber,
-                                        cells: [
-                                            { title: this.initialResultText }
-                                        ]
-                                    });
-
-                                // Increment by 2 the row number.
-                                rowNumber += 2;
-                                this.setState({
-                                    searching: false,
-                                    rows: resultRows,
-                                    // Each row is composed of a parent and its single child.
-                                    pagedRows: resultRows.slice(0, 2 * this.state.perPage),
-                                    total: resultRows.length / 2,
-                                    page: 1
+                            resultRows.push(
+                                {
+                                    isOpen: false,
+                                    cells: [
+                                        { title: dn },
+                                        info.numSubordinates,
+                                        info.modifyTimestamp,
+                                    ],
+                                    rawdn: info.dn,
+                                    isLockable: info.isLockable,
+                                    isRole: info.isRole,
+                                    entryState: entryState
+                                },
+                                {
+                                    parent: rowNumber,
+                                    cells: [
+                                        { title: this.initialResultText }
+                                    ]
                                 });
+
+                            // Increment by 2 the row number.
+                            rowNumber += 2;
+                            this.setState({
+                                searching: false,
+                                rows: resultRows,
+                                // Each row is composed of a parent and its single child.
+                                pagedRows: resultRows.slice(0, 2 * this.state.perPage),
+                                total: resultRows.length / 2,
+                                page: 1
                             });
-                    return [];
+                        });
                 });
             } else {
                 searchResults.map(aChild => {
@@ -461,11 +454,10 @@ export class SearchDatabase extends React.Component {
                     // TODO Add isActive func
                     let dn = info.dn;
                     if (info.ldapsubentry) {
-                        dn = (
+                        dn =
                             <div className="ds-info-icon">
                                 {info.dn} <InfoCircleIcon title="This is a hidden LDAP subentry" className="ds-info-icon" />
-                            </div>
-                        );
+                            </div>;
                     }
 
                     resultRows.push(
@@ -488,7 +480,6 @@ export class SearchDatabase extends React.Component {
 
                     // Increment by 2 the row number.
                     rowNumber += 2;
-                    return [];
                 });
                 this.setState({
                     searching: false,
@@ -515,11 +506,19 @@ export class SearchDatabase extends React.Component {
                 page: 1
             });
         }
-    };
+
+    }
 
     handleCustomAttrChange (value) {
         this.setState({
             customSearchAttrs: value
+        });
+    }
+
+    handleSearchChange (e) {
+        const value = e.target.value;
+        this.setState({
+            searchType: value
         });
     }
 
@@ -578,9 +577,10 @@ export class SearchDatabase extends React.Component {
                         entryMenuIsOpen: !this.state.entryMenuIsOpen,
                         refreshEntryTime: Date.now()
                     }, () => {
-                        this.handleSearch();
+                        this.onSearch();
                         this.handleConfirmModalToggle();
                     });
+        
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
@@ -597,7 +597,7 @@ export class SearchDatabase extends React.Component {
                         entryMenuIsOpen: !this.state.entryMenuIsOpen,
                         refreshEntryTime: Date.now()
                     }, () => {
-                        this.handleSearch();
+                        this.onSearch();
                         this.handleConfirmModalToggle();
                     });
                 });
@@ -620,7 +620,7 @@ export class SearchDatabase extends React.Component {
                             const entryType = rowData.isRole ? "role" : "account";
                             this.setState({
                                 entryDn: rowData.rawdn,
-                                entryType,
+                                entryType: entryType,
                                 operationType: "lock"
                             }, () => { this.handleConfirmModalToggle() });
                         }
@@ -633,7 +633,7 @@ export class SearchDatabase extends React.Component {
                             const entryType = rowData.isRole ? "role" : "account";
                             this.setState({
                                 entryDn: rowData.rawdn,
-                                entryType,
+                                entryType: entryType,
                                 operationType: "unlock"
                             }, () => { this.handleConfirmModalToggle() });
                         }
@@ -647,7 +647,7 @@ export class SearchDatabase extends React.Component {
                         const entryType = rowData.isRole ? "role" : "account";
                         this.setState({
                             entryDn: rowData.rawdn,
-                            entryType,
+                            entryType: entryType,
                             operationType: "lock"
                         }, () => { this.handleConfirmModalToggle() });
                     }
@@ -711,6 +711,7 @@ export class SearchDatabase extends React.Component {
                         wizardEntryDn: rowData.rawdn,
                         isWizardOpen: true,
                         isTreeWizardOpen: false,
+                        keyIndex,
                     });
                 }
             },
@@ -732,7 +733,7 @@ export class SearchDatabase extends React.Component {
         return [
             ...updateActions,
         ];
-    };
+    }
 
     render() {
         const {
@@ -750,17 +751,19 @@ export class SearchDatabase extends React.Component {
             wizardEntryDn,
         } = this.state;
 
+        let has_rows = true;
         let columns = this.state.columns;
         let pagedRows = this.state.pagedRows;
 
-        if (pagedRows.length === 0) {
+        if (pagedRows.length == 0) {
+            has_rows = false;
             columns = [' '];
             pagedRows = [{ cells: ['No Search Results'] }];
         }
 
         const treeItemsProps = wizardName === 'acis'
             ? { treeViewRootSuffixes: this.state.treeViewRootSuffixes }
-            : {};
+            : {}
 
         return (
             <div>
@@ -773,7 +776,7 @@ export class SearchDatabase extends React.Component {
                         editorLdapServer={this.props.serverId}
                         {...treeItemsProps}
                         setWizardOperationInfo={this.setWizardOperationInfo}
-                        onReload={this.handleSearch}
+                        onReload={this.onSearch}
                         allObjectclasses={this.props.allObjectclasses}
                     />
                 )}
@@ -789,7 +792,7 @@ export class SearchDatabase extends React.Component {
                                 <GridItem span={4}>
                                     <FormSelect
                                         id="searchSuffix"
-                                        value={baseDN}
+                                        value={this.state.baseDN}
                                         onChange={(value, event) => {
                                             this.handleSuffixChange(event);
                                         }}
@@ -801,11 +804,12 @@ export class SearchDatabase extends React.Component {
                                             <FormSelectOption key={suffix} value={suffix} label={suffix} />
                                         ))}
                                         {suffixList.length === 0 &&
-                                            <FormSelectOption isDisabled key="No database" value="" label="No databases" />}
+                                            <FormSelectOption isDisabled key="No database" value="" label="No databases" />
+                                        }
                                     </FormSelect>
                                 </GridItem>
                                 <GridItem span={8}>
-                                    { this.state.searchSuffix !== this.state.searchBase ? <Label onClose={this.handleClearSearchBase} className="ds-left-margin" color="blue">{this.state.searchBase}</Label> : "" }
+                                    { this.state.searchSuffix !== this.state.searchBase ? <Label onClose={this.clearSearchBase} className="ds-left-margin" color="blue">{this.state.searchBase}</Label> : "" }
                                 </GridItem>
                             </Grid>
                         </div>
@@ -830,11 +834,11 @@ export class SearchDatabase extends React.Component {
                                     />
                                 </ToggleGroup>
                                 <SearchInput
-                                    placeholder={this.state.searchType === "Search Text" ? "Enter search text ..." : "Enter an LDAP search filter ..."}
+                                    placeholder={this.state.searchType == "Search Text" ? "Enter search text ..." : "Enter an LDAP search filter ..."}
                                     value={this.state.searchText}
-                                    onChange={this.handleSearchChange}
-                                    onClear={(evt, val) => this.handleSearchChange(evt, '')}
-                                    onSearch={this.handleSearch}
+                                    onChange={this.onSearchChange}
+                                    onClear={evt => this.onSearchChange('', evt)}
+                                    onSearch={this.onSearch}
                                     className="ds-search-input"
                                 />
                             </div>
@@ -844,7 +848,7 @@ export class SearchDatabase extends React.Component {
                     <ExpandableSection
                         className="ds-margin-left"
                         toggleText={this.state.isExpanded ? 'Hide Search Criteria' : 'Show Search Criteria'}
-                        onToggle={this.handleToggle}
+                        onToggle={this.onToggle}
                         isExpanded={this.state.isExpanded}
                         displaySize={this.state.isExpanded ? "large" : "default"}
                     >
@@ -865,7 +869,7 @@ export class SearchDatabase extends React.Component {
                                     validated={!valid_dn(this.state.searchBase) ? ValidatedOptions.error : ValidatedOptions.default}
                                 />
                             </GridItem>
-                            <GridItem span={2} className="ds-left-margin ds-lower-field-md">
+                            <GridItem span={2} className="ds-left-margin ds-lower-field-md" >
                                 <FormHelperText isError isHidden={valid_dn(this.state.searchBase)}>
                                     Invalid DN syntax
                                 </FormHelperText>
@@ -942,7 +946,7 @@ export class SearchDatabase extends React.Component {
                                 />
                             </GridItem>
                         </Grid>
-                        <Grid className="ds-margin-left ds-margin-top" title="Check if the search result entries are locked, and add Lock/Unlock options to the dropdown. This setting vastly impacts the search's performance. Use only when needed.">
+                        <Grid className="ds-margin-left ds-margin-top" title="Check if the search result entries are locked, and add Lock/Unlock options to the dropdown. This setting vastly impacts the search's performance. Use only when needed."> 
                             <GridItem span={2} className="ds-label">
                                 Show Locking
                             </GridItem>
@@ -950,7 +954,7 @@ export class SearchDatabase extends React.Component {
                                 <Switch id="no-label-switch-on" aria-label="Message when on" isChecked={this.state.checkIfLocked} onChange={this.handleChangeSwitch} />
                             </GridItem>
                         </Grid>
-                        <div hidden={this.state.searchType === "Search Filter"}>
+                        <div hidden={this.state.searchType == "Search Filter"}>
                             <Grid
                                 className="ds-margin-left ds-margin-top"
                                 title="Only used for Search Text based queries.  The selected attributes will use Search Text as the attribute value in the search filter"
@@ -1083,9 +1087,9 @@ export class SearchDatabase extends React.Component {
                                         <Select
                                             variant={SelectVariant.typeaheadMulti}
                                             typeAheadAriaLabel="Type attributes to include in filter ..."
-                                            onToggle={this.handleCustomAttrToggle}
-                                            onSelect={this.handleCustomAttrChange}
-                                            onClear={this.handleCustomAttrClear}
+                                            onToggle={this.onCustomAttrToggle}
+                                            onSelect={this.onCustomAttrChange}
+                                            onClear={this.onCustomAttrClear}
                                             selections={this.state.customSearchAttrs}
                                             isOpen={this.state.isCustomAttrOpen}
                                             aria-labelledby="typeAhead-attr-filter"
@@ -1131,7 +1135,7 @@ export class SearchDatabase extends React.Component {
                             editorTableRows={pagedRows}
                             onCollapse={this.handleCollapse}
                             columns={columns}
-                            actionResolver={pagedRows.length < 2 ? null : this.actionResolver}
+                            actionResolver={pagedRows.length < 2 ? null: this.actionResolver}
                         />
                     </div>
                 </div>

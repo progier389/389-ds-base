@@ -44,26 +44,26 @@ export class ServerLDAPI extends React.Component {
             isGIDOpen: false,
         };
 
-        this.handleUIDToggle = isUIDOpen => {
+        this.onUIDToggle = isUIDOpen => {
             this.setState({
                 isUIDOpen
             });
         };
 
-        this.handleUIDSelect = (event, selection, isPlaceholder) => {
+        this.onUIDSelect = (event, selection, isPlaceholder) => {
             this.setState({
                 'nsslapd-ldapiuidnumbertype': selection,
                 isUIDOpen: false
             }, () => { this.validateSaveBtn() });
         };
 
-        this.handleGIDToggle = isGIDOpen => {
+        this.onGIDToggle = isGIDOpen => {
             this.setState({
                 isGIDOpen
             });
         };
 
-        this.handleGIDSelect = (event, selection, isPlaceholder) => {
+        this.onGIDSelect = (event, selection, isPlaceholder) => {
             this.setState({
                 'nsslapd-ldapigidnumbertype': selection,
                 isGIDOpen: false
@@ -72,8 +72,8 @@ export class ServerLDAPI extends React.Component {
 
         this.validateSaveBtn = this.validateSaveBtn.bind(this);
         this.handleChange = this.handleChange.bind(this);
-        this.handleLoadConfig = this.handleLoadConfig.bind(this);
-        this.handleSaveConfig = this.handleSaveConfig.bind(this);
+        this.loadConfig = this.loadConfig.bind(this);
+        this.saveConfig = this.saveConfig.bind(this);
         this.getAttributes = this.getAttributes.bind(this);
         this.reloadConfig = this.reloadConfig.bind(this);
     }
@@ -81,7 +81,7 @@ export class ServerLDAPI extends React.Component {
     componentDidMount() {
         // Loading config
         if (!this.state.loaded) {
-            this.handleLoadConfig();
+            this.loadConfig();
         } else {
             this.props.enableTree();
         }
@@ -140,12 +140,12 @@ export class ServerLDAPI extends React.Component {
         }, () => { this.validateSaveBtn() });
     }
 
-    handleLoadConfig() {
+    loadConfig() {
         const attrs = this.state.attrs;
         let mapToEntries = false;
 
         if ('nsslapd-ldapimaptoentries' in attrs) {
-            if (attrs['nsslapd-ldapimaptoentries'][0] === "on") {
+            if (attrs['nsslapd-ldapimaptoentries'][0] == "on") {
                 mapToEntries = true;
             }
         }
@@ -181,8 +181,8 @@ export class ServerLDAPI extends React.Component {
                     const config = JSON.parse(content);
                     const attrs = config.attrs;
                     this.setState({
-                        attrs
-                    }, this.handleLoadConfig);
+                        attrs: attrs
+                    }, this.loadConfig);
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
@@ -196,18 +196,18 @@ export class ServerLDAPI extends React.Component {
                 });
     }
 
-    handleSaveConfig() {
+    saveConfig() {
         this.setState({
             loading: true
         });
 
-        const cmd = [
+        let cmd = [
             'dsconf', '-j', "ldapi://%2fvar%2frun%2fslapd-" + this.props.serverId + ".socket",
             'config', 'replace'
         ];
 
         for (const attr of [...ldapi_attrs, 'nsslapd-ldapimaptoentries']) {
-            if (this.state['_' + attr] !== this.state[attr]) {
+            if (this.state['_' + attr] != this.state[attr]) {
                 let val = this.state[attr];
                 if (typeof val === "boolean") {
                     if (val) {
@@ -220,7 +220,7 @@ export class ServerLDAPI extends React.Component {
             }
         }
 
-        log_cmd("handleSaveConfig", "Saving LDAPI settings", cmd);
+        log_cmd("saveConfig", "Saving LDAPI settings", cmd);
         cockpit
                 .spawn(cmd, { superuser: true, err: "message" })
                 .done(content => {
@@ -257,7 +257,7 @@ export class ServerLDAPI extends React.Component {
             const attributes = this.state.attributes.map((option, index) => (
                 <SelectOption key={index} value={option} />
             ));
-            mapUserAttrs = (
+            mapUserAttrs =
                 <div className="ds-margin-left">
                     <Grid
                         className="ds-margin-top"
@@ -270,8 +270,8 @@ export class ServerLDAPI extends React.Component {
                             <Select
                                 variant={SelectVariant.single}
                                 aria-label="Select UID Input"
-                                onToggle={this.handleUIDToggle}
-                                onSelect={this.handleUIDSelect}
+                                onToggle={this.onUIDToggle}
+                                onSelect={this.onUIDSelect}
                                 selections={this.state['nsslapd-ldapiuidnumbertype']}
                                 isOpen={this.state.isUIDOpen}
                                 aria-labelledby="UID"
@@ -291,8 +291,8 @@ export class ServerLDAPI extends React.Component {
                             <Select
                                 variant={SelectVariant.single}
                                 aria-label="Select GID Input"
-                                onToggle={this.handleGIDToggle}
-                                onSelect={this.handleGIDSelect}
+                                onToggle={this.onGIDToggle}
+                                onSelect={this.onGIDSelect}
                                 selections={this.state['nsslapd-ldapigidnumbertype']}
                                 isOpen={this.state.isGIDOpen}
                                 aria-labelledby="GID"
@@ -320,11 +320,10 @@ export class ServerLDAPI extends React.Component {
                             />
                         </GridItem>
                     </Grid>
-                </div>
-            );
+                </div>;
         }
 
-        let body = (
+        let body =
             <div>
                 <Form className="ds-margin-top-xlg ds-left-margin" autoComplete="off" isHorizontal>
                     <Grid title="The Unix socket file (nsslapd-ldapifilepath).  The UI requires this exact path so it is a read-only setting.">
@@ -377,25 +376,23 @@ export class ServerLDAPI extends React.Component {
                     isDisabled={this.state.saveDisabled || this.state.loading}
                     variant="primary"
                     className="ds-margin-top-xlg"
-                    onClick={this.handleSaveConfig}
+                    onClick={this.saveConfig}
                     isLoading={this.state.loading}
                     spinnerAriaValueText={this.state.loading ? "Saving" : undefined}
                     {...extraPrimaryProps}
                 >
                     {saveBtnName}
                 </Button>
-            </div>
-        );
+            </div>;
 
         if (!this.state.loaded) {
-            body = (
+            body =
                 <div className="ds-margin-top-xlg ds-center">
                     <TextContent>
                         <Text component={TextVariants.h3}>Loading LDAPI configuration ...</Text>
                     </TextContent>
                     <Spinner className="ds-margin-top" size="lg" />
-                </div>
-            );
+                </div>;
         }
 
         return (
@@ -404,13 +401,12 @@ export class ServerLDAPI extends React.Component {
                     <GridItem span={5}>
                         <TextContent>
                             <Text component={TextVariants.h3}>
-                                LDAPI & AutoBind Settings
-                                <FontAwesomeIcon
+                                LDAPI & AutoBind Settings <FontAwesomeIcon
                                     size="lg"
                                     className="ds-left-margin ds-refresh"
                                     icon={faSyncAlt}
                                     title="Refresh LDAPI settings"
-                                    onClick={this.handleLoadConfig}
+                                    onClick={this.loadConfig}
                                 />
                             </Text>
                         </TextContent>

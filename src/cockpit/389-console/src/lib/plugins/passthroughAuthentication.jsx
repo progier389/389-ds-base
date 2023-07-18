@@ -11,13 +11,16 @@ import {
     Modal,
     ModalVariant,
     NumberInput,
+    Select,
+    SelectOption,
+    SelectVariant,
     TextInput,
     ValidatedOptions,
 } from "@patternfly/react-core";
 import { PassthroughAuthURLsTable } from "./pluginTables.jsx";
 import PluginBasicConfig from "./pluginBasicConfig.jsx";
 import PropTypes from "prop-types";
-import { log_cmd, valid_dn } from "../tools.jsx";
+import { log_cmd, valid_dn, listsEqual } from "../tools.jsx";
 import { DoubleConfirmModal } from "../notifications.jsx";
 
 class PassthroughAuthentication extends React.Component {
@@ -81,13 +84,13 @@ class PassthroughAuthentication extends React.Component {
         ));
 
         this.handlePassthruChange = this.handlePassthruChange.bind(this);
-        this.onModalChange = this.onModalChange.bind(this);
+        this.handleModalChange = this.handleModalChange.bind(this);
         this.validatePassthru = this.validatePassthru.bind(this);
         this.loadURLs = this.loadURLs.bind(this);
         this.openURLModal = this.openURLModal.bind(this);
-        this.handleCloseURLModal = this.handleCloseURLModal.bind(this);
+        this.closeURLModal = this.closeURLModal.bind(this);
         this.showEditURLModal = this.showEditURLModal.bind(this);
-        this.handleShowAddURLModal = this.handleShowAddURLModal.bind(this);
+        this.showAddURLModal = this.showAddURLModal.bind(this);
         this.cmdURLOperation = this.cmdURLOperation.bind(this);
         this.deleteURL = this.deleteURL.bind(this);
         this.addURL = this.addURL.bind(this);
@@ -109,7 +112,7 @@ class PassthroughAuthentication extends React.Component {
 
         // Check we have our required attributes set
         for (const attr of reqAttrs) {
-            if (this.state[attr] === "") {
+            if (this.state[attr] == "") {
                 errObj[attr] = true;
                 all_good = false;
                 break;
@@ -135,7 +138,7 @@ class PassthroughAuthentication extends React.Component {
                 'urlStartTLS'
             ];
             for (const check_attr of configAttrs) {
-                if (this.state[check_attr] !== this.state['_' + check_attr]) {
+                if (this.state[check_attr] != this.state['_' + check_attr]) {
                     all_good = true;
                     break;
                 }
@@ -155,7 +158,7 @@ class PassthroughAuthentication extends React.Component {
         }, () => { this.validatePassthru() });
     }
 
-    onModalChange(e) {
+    handleModalChange(e) {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
         this.setState({
             [e.target.id]: value
@@ -216,13 +219,13 @@ class PassthroughAuthentication extends React.Component {
                     const tableKey = this.state.tableKey + 1;
                     this.setState({
                         urlRows: myObject.items,
-                        tableKey
+                        tableKey: tableKey
                     });
                     this.props.toggleLoadingHandler();
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
-                    if (err !== 0) {
+                    if (err != 0) {
                         console.log("loadURLs failed", errMsg.desc);
                     }
                     this.props.toggleLoadingHandler();
@@ -233,7 +236,7 @@ class PassthroughAuthentication extends React.Component {
         this.openURLModal(rowData);
     }
 
-    handleShowAddURLModal() {
+    showAddURLModal() {
         this.openURLModal();
     }
 
@@ -269,13 +272,13 @@ class PassthroughAuthentication extends React.Component {
                 urlTimeout: params.split(",")[2],
                 urlLDVer: params.split(",")[3],
                 urlConnLifeTime: params.split(",")[4],
-                urlStartTLS: !(params.split(",")[5] === "0"),
+                urlStartTLS: !(params.split(",")[5] == "0"),
                 saveBtnDisabledPassthru: true,
             });
         }
     }
 
-    handleCloseURLModal() {
+    closeURLModal() {
         this.setState({
             urlEntryModalShow: false,
             savingPassthru: false
@@ -354,7 +357,7 @@ class PassthroughAuthentication extends React.Component {
             "ldap-pass-through-auth",
             action
         ];
-        if (oldURL !== "" && action === "modify") {
+        if (oldURL != "" && action == "modify") {
             cmd = [...cmd, oldURL, constructedURL];
         } else {
             cmd = [...cmd, constructedURL];
@@ -380,7 +383,7 @@ class PassthroughAuthentication extends React.Component {
                         `The ${action} operation was successfully done on "${constructedURL}" entry`
                     );
                     this.loadURLs();
-                    this.handleCloseURLModal();
+                    this.closeURLModal();
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
@@ -389,7 +392,7 @@ class PassthroughAuthentication extends React.Component {
                         `Error during the URL ${action} operation - ${errMsg.desc}`
                     );
                     this.loadURLs();
-                    this.handleCloseURLModal();
+                    this.closeURLModal();
                 });
     }
 
@@ -467,7 +470,7 @@ class PassthroughAuthentication extends React.Component {
                     variant={ModalVariant.medium}
                     title={title_url}
                     isOpen={urlEntryModalShow}
-                    onClose={this.handleCloseURLModal}
+                    onClose={this.closeURLModal}
                     actions={[
                         <Button
                             key="confirm"
@@ -480,7 +483,7 @@ class PassthroughAuthentication extends React.Component {
                         >
                             {saveBtnName}
                         </Button>,
-                        <Button key="cancel" variant="link" onClick={this.handleCloseURLModal}>
+                        <Button key="cancel" variant="link" onClick={this.closeURLModal}>
                             Cancel
                         </Button>
                     ]}
@@ -620,7 +623,7 @@ class PassthroughAuthentication extends React.Component {
                         />
                         <Button
                             variant="primary"
-                            onClick={this.handleShowAddURLModal}
+                            onClick={this.showAddURLModal}
                         >
                             Add URL
                         </Button>
@@ -629,7 +632,7 @@ class PassthroughAuthentication extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmDeleteURL}
                     closeHandler={this.closeConfirmDeleteURL}
-                    handleChange={this.onModalChange}
+                    handleChange={this.handleModalChange}
                     actionHandler={this.deleteURL}
                     spinning={this.state.modalSpinning}
                     item={this.state.deleteName}

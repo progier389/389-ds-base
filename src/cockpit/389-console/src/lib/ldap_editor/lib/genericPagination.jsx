@@ -3,9 +3,10 @@ import {
     BadgeToggle,
     Grid,
     GridItem,
-    Dropdown, DropdownItem, DropdownPosition,
+    Dropdown, DropdownItem, DropdownPosition, DropdownToggle, DropdownToggleCheckbox,
     Pagination,
     SearchInput,
+    Toolbar, ToolbarGroup, ToolbarItem
 } from '@patternfly/react-core';
 import {
     Table, TableHeader, TableBody, TableVariant,
@@ -33,7 +34,7 @@ class GenericPagination extends React.Component {
 
         this.onSort = (_event, index, direction) => {
             const mySortedRows = this.state.rows
-                    .sort((a, b) => (a[index] < b[index] ? -1 : a[index] > b[index] ? 1 : 0));
+                .sort((a, b) => (a[index] < b[index] ? -1 : a[index] > b[index] ? 1 : 0));
             this.setState({
                 sortBy: {
                     index,
@@ -45,11 +46,11 @@ class GenericPagination extends React.Component {
             }, () => this.setState({ // Need to update this.state.rows prior to run getRowsToShow().
                 pagedRows: this.getRowsToShow(this.state.page, this.state.perPage)
             }));
-        };
+        }
 
-        this.handleSearchChange = (event, value) => {
+        this.onSearchChange = (value, event) => {
             let rows = [];
-            const all = [];
+            let all = [];
             const val = value.toLowerCase();
 
             // Get fresh list of attributes and what is selected
@@ -68,9 +69,8 @@ class GenericPagination extends React.Component {
                             attr.cells[0],
                             attr.cells[1],
                         ],
-                        selected,
+                        selected: selected,
                     });
-                return [];
             });
 
             // Process search filter on the entire list
@@ -88,11 +88,11 @@ class GenericPagination extends React.Component {
             }
 
             this.setState({
-                rows,
+                rows: rows,
                 itemCount: rows.length,
                 pagedRows: rows.slice(0, this.state.perPage),
-            });
-        };
+            })
+        }
     }
 
     componentDidMount () {
@@ -137,42 +137,41 @@ class GenericPagination extends React.Component {
         allItems[index].selected = isSelected;
 
         // Update all rows so our selected attributes stay accurate as "search" could mess rows
-        const allRows = [...this.state.allRows];
-        index = allRows.findIndex(item => item.cells[0] === cellValue);
-        allRows[index].selected = isSelected;
-        const selectedAttrs = allRows.filter(row => (row.selected)).map(attr => attr.cells[0]);
+        index = this.state.allRows.findIndex(item => item.cells[0] === cellValue);
+        this.state.allRows[index].selected = isSelected;
+        const selectedAttrs = this.state.allRows.filter(row => (row.selected)).map(attr => attr.cells[0]);
+
         this.setState({
             rows: allItems,
-            allRows,
             selectedAttrs,
             pagedRows: this.getRowsToShow(this.state.page, this.state.perPage)
         });
         this.props.handleSelectedAttrs(selectedAttrs);
     };
 
-    handleDropDownToggle = isOpen => {
+    onDropDownToggle = isOpen => {
         this.setState({
             isDropDownOpen: isOpen
         });
     };
 
-    handleDropDownSelect = event => {
+    onDropDownSelect = event => {
         this.setState((prevState, props) => {
             return { isDropDownOpen: !prevState.isDropDownOpen };
         });
     };
 
-    handleSetPage = (_event, pageNumber) => {
+    onSetPage = (_event, pageNumber) => {
         this.setState({
             page: pageNumber,
             pagedRows: this.getRowsToShow(pageNumber, this.state.perPage)
         });
     };
 
-    handlePerPageSelect = (_event, perPage) => {
+    onPerPageSelect = (_event, perPage) => {
         this.setState({
             page: 1,
-            perPage,
+            perPage: perPage,
             pagedRows: this.getRowsToShow(1, perPage)
         });
     };
@@ -184,7 +183,7 @@ class GenericPagination extends React.Component {
         return this.state.sortedRows.slice(start, end);
         } */
         return this.state.rows.slice(start, end);
-    };
+    }
 
     buildAttrDropdown = () => {
         const { isDropDownOpen, selectedAttrs } = this.state;
@@ -205,9 +204,9 @@ class GenericPagination extends React.Component {
             <Dropdown
                 className="ds-dropdown-padding ds-margin-top-lg"
                 position={DropdownPosition.left}
-                onSelect={this.handleDropDownSelect}
+                onSelect={this.onDropDownSelect}
                 toggle={
-                    <BadgeToggle id="toggle-attr-select" badgeProps={badgeProps} onToggle={this.handleDropDownToggle}>
+                    <BadgeToggle id="toggle-attr-select" badgeProps={badgeProps} onToggle={this.onDropDownToggle}>
                         {numSelected > 0 ? <>{numSelected} selected </> : <>0 selected </>}
                     </BadgeToggle>
                 }
@@ -215,11 +214,12 @@ class GenericPagination extends React.Component {
                 dropdownItems={items}
             />
         );
-    };
+    }
 
     render () {
         const {
             itemCount, page, perPage, pagedRows,
+            isDropDownOpen
         } = this.state;
 
         // Enable pagination if the number of rows is higher than 10.
@@ -228,7 +228,8 @@ class GenericPagination extends React.Component {
         return (
             <Grid>
                 {this.props.isSelectable &&
-                    this.buildAttrDropdown()}
+                    this.buildAttrDropdown()
+                }
                 <GridItem span={12} className={this.props.isSelectable ? "ds-margin-top" : ""}>
                     <Grid>
                         { this.props.isSearchable &&
@@ -237,21 +238,23 @@ class GenericPagination extends React.Component {
                                     className="ds-font-size-md"
                                     placeholder='Search'
                                     value={this.state.searchValue}
-                                    onChange={this.handleSearchChange}
-                                    onClear={(evt) => this.handleSearchChange(evt, '')}
+                                    onChange={this.onSearchChange}
+                                    onClear={(evt) => this.onSearchChange('', evt)}
                                 />
-                            </GridItem>}
+                            </GridItem>
+                        }
                         <GridItem span={this.props.isSearchable ? 7 : 12}>
                             { showPagination &&
                                 <Pagination
                                     itemCount={itemCount}
                                     page={page}
                                     perPage={perPage}
-                                    onSetPage={this.handleSetPage}
-                                    onPerPageSelect={this.handlePerPageSelect}
+                                    onSetPage={this.onSetPage}
+                                    onPerPageSelect={this.onPerPageSelect}
                                     isCompact
                                     widgetId="pagination-options-menu-generic"
-                                />}
+                                />
+                            }
                         </GridItem>
                     </Grid>
                 </GridItem>

@@ -30,10 +30,12 @@ import {
 import {
     SortByDirection,
 } from '@patternfly/react-table';
-import { TrashAltIcon } from '@patternfly/react-icons/dist/js/icons/trash-alt-icon';
+import TrashAltIcon from '@patternfly/react-icons/dist/js/icons/trash-alt-icon';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons';
 import { DoubleConfirmModal } from "../notifications.jsx";
+
+const _ = cockpit.gettext;
 
 export class ReplMonitor extends React.Component {
     constructor (props) {
@@ -104,7 +106,7 @@ export class ReplMonitor extends React.Component {
             aliasSortBy: {},
         };
 
-        this.handleToggle = (isExpanded) => {
+        this.onToggle = (isExpanded) => {
             this.setState({
                 isExpanded
             });
@@ -112,7 +114,7 @@ export class ReplMonitor extends React.Component {
 
         this.maxValue = 65534;
 
-        this.onFieldChange = this.onFieldChange.bind(this);
+        this.handleFieldChange = this.handleFieldChange.bind(this);
         this.handleNavConfigSelect = this.handleNavConfigSelect.bind(this);
         this.showAgmtModalRemote = this.showAgmtModalRemote.bind(this);
         this.closeAgmtModal = this.closeAgmtModal.bind(this);
@@ -123,40 +125,40 @@ export class ReplMonitor extends React.Component {
         this.editCreds = this.editCreds.bind(this);
         this.removeCreds = this.removeCreds.bind(this);
         this.openCredsModal = this.openCredsModal.bind(this);
-        this.handleShowAddCredsModal = this.handleShowAddCredsModal.bind(this);
+        this.showAddCredsModal = this.showAddCredsModal.bind(this);
         this.showEditCredsModal = this.showEditCredsModal.bind(this);
         this.closeCredsModal = this.closeCredsModal.bind(this);
-        this.handleCredSort = this.handleCredSort.bind(this);
+        this.onCredSort = this.onCredSort.bind(this);
         this.handleNavSelect = this.handleNavSelect.bind(this);
         this.addAliases = this.addAliases.bind(this);
         this.editAliases = this.editAliases.bind(this);
         this.removeAliases = this.removeAliases.bind(this);
         this.openAliasesModal = this.openAliasesModal.bind(this);
-        this.handleShowAddAliasesModal = this.handleShowAddAliasesModal.bind(this);
+        this.showAddAliasesModal = this.showAddAliasesModal.bind(this);
         this.showEditAliasesModal = this.showEditAliasesModal.bind(this);
         this.closeAliasesModal = this.closeAliasesModal.bind(this);
-        this.handleAliasSort = this.handleAliasSort.bind(this);
+        this.onAliasSort = this.onAliasSort.bind(this);
 
-        this.handleFullReport = this.handleFullReport.bind(this);
+        this.doFullReport = this.doFullReport.bind(this);
         this.processCredsInput = this.processCredsInput.bind(this);
         this.closeReportModal = this.closeReportModal.bind(this);
         this.refreshFullReport = this.refreshFullReport.bind(this);
 
-        this.handleMinusConfig = this.handleMinusConfig.bind(this);
-        this.handleConfigChange = this.handleConfigChange.bind(this);
-        this.handlePlusConfig = this.handlePlusConfig.bind(this);
+        this.onMinusConfig = this.onMinusConfig.bind(this);
+        this.onConfigChange = this.onConfigChange.bind(this);
+        this.onPlusConfig = this.onPlusConfig.bind(this);
 
         // dsrc
         this.loadDSRC = this.loadDSRC.bind(this);
-        this.handleShowAddDSRCCred = this.handleShowAddDSRCCred.bind(this);
-        this.handleShowAddDSRCAlias = this.handleShowAddDSRCAlias.bind(this);
+        this.showAddDSRCCred = this.showAddDSRCCred.bind(this);
+        this.showAddDSRCAlias = this.showAddDSRCAlias.bind(this);
         this.closeAddDSRCCred = this.closeAddDSRCCred.bind(this);
         this.closeAddDSRCAlias = this.closeAddDSRCAlias.bind(this);
         this.addDSRCCred = this.addDSRCCred.bind(this);
         this.addDSRCAlias = this.addDSRCAlias.bind(this);
         this.showConfirmDeleteDSRCCred = this.showConfirmDeleteDSRCCred.bind(this);
         this.showConfirmDeleteDSRCAlias = this.showConfirmDeleteDSRCAlias.bind(this);
-        this.handleConfirmOverwriteDSRC = this.handleConfirmOverwriteDSRC.bind(this);
+        this.showConfirmOverwriteDSRC = this.showConfirmOverwriteDSRC.bind(this);
         this.closeConfirmDeleteDSRCCred = this.closeConfirmDeleteDSRCCred.bind(this);
         this.closeConfirmDeleteDSRCAlias = this.closeConfirmDeleteDSRCAlias.bind(this);
         this.closeConfirmOverwriteDSRC = this.closeConfirmOverwriteDSRC.bind(this);
@@ -204,8 +206,8 @@ export class ReplMonitor extends React.Component {
                 .spawn(dsrc_cmd, { superuser: true, err: "message" })
                 .done(dsrc_content => {
                     const content = JSON.parse(dsrc_content);
-                    const credRows = [];
-                    const aliasRows = [];
+                    let credRows = [];
+                    let aliasRows = [];
                     if ("repl-monitor-connections" in content) {
                         const report_config = content["repl-monitor-connections"];
                         for (const [connection, value] of Object.entries(report_config)) {
@@ -232,7 +234,10 @@ export class ReplMonitor extends React.Component {
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
-                    console.log(`loadDSRC: Could not load .dsrc file: ${errMsg.desc}`);
+                    this.props.addNotification(
+                        "error",
+                        `Failed to get .dsrc information: ${errMsg.desc}`
+                    );
                     this.setState({
                         loadingDSRC: false,
                     });
@@ -257,9 +262,7 @@ export class ReplMonitor extends React.Component {
                                     credsBindpw: "",
                                     pwInputInterractive: true
                                 }
-                            ],
-                            credRows: [...this.props.credRows],
-                            aliasRows: [...this.props.aliasRows],
+                            ]
                         }));
                         if ('replAgmts' in this.props.data) {
                             for (const agmt of this.props.data.replAgmts) {
@@ -289,20 +292,20 @@ export class ReplMonitor extends React.Component {
         this.props.enableTree();
     }
 
-    handleMinusConfig(id) {
+    onMinusConfig(id) {
         this.setState({
             [id]: Number(this.state[id]) - 1
         });
     }
 
-    handleConfigChange(event, id, min) {
+    onConfigChange(event, id, min) {
         const newValue = isNaN(event.target.value) ? 0 : Number(event.target.value);
         this.setState({
             [id]: newValue > this.maxValue ? this.maxValue : newValue < min ? min : newValue
         });
     }
 
-    handlePlusConfig(id) {
+    onPlusConfig(id) {
         this.setState({
             [id]: Number(this.state[id]) + 1
         });
@@ -322,7 +325,7 @@ export class ReplMonitor extends React.Component {
         });
     }
 
-    onFieldChange(e) {
+    handleFieldChange(e) {
         // PF 3 version
         let value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
         if (e.target.type === 'number') {
@@ -391,14 +394,14 @@ export class ReplMonitor extends React.Component {
             );
         } else {
             for (const supplier of this.state.reportData) {
-                if (supplier.name === supplierName) {
+                if (supplier.name == supplierName) {
                     for (const replica of supplier.data) {
-                        if (`${replica.replica_root}:${replica.replica_id}` === replicaName) {
+                        if (`${replica.replica_root}:${replica.replica_id}` == replicaName) {
                             for (const agmt of replica.agmts_status) {
-                                if (agmt['agmt-name'][0] === agmtName) {
+                                if (agmt['agmt-name'][0] == agmtName) {
                                     this.setState({
                                         showAgmtModal: true,
-                                        agmt
+                                        agmt: agmt
                                     });
                                     break;
                                 }
@@ -428,10 +431,10 @@ export class ReplMonitor extends React.Component {
             this.props.addNotification("warning", "Password field can't be empty, if Interractive Input is not selected");
         } else {
             let credsExist = false;
-            if ((action === "add") && (credentialsList.some(row => row.connData === `${credsHostname}:${credsPort}`))) {
+            if ((action == "add") && (credentialsList.some(row => row.connData === `${credsHostname}:${credsPort}`))) {
                 credsExist = true;
             }
-            if ((action === "edit") && (credentialsList.some(row => row.connData === `${oldCredsHostname}:${oldCredsPort}`))) {
+            if ((action == "edit") && (credentialsList.some(row => row.connData === `${oldCredsHostname}:${oldCredsPort}`))) {
                 this.setState({
                     credentialsList: credentialsList.filter(
                         row => row.connData !== `${oldCredsHostname}:${oldCredsPort}`
@@ -445,9 +448,9 @@ export class ReplMonitor extends React.Component {
                         ...prevState.credentialsList,
                         {
                             connData: `${credsHostname}:${credsPort}`,
-                            credsBinddn,
-                            credsBindpw,
-                            pwInputInterractive
+                            credsBinddn: credsBinddn,
+                            credsBindpw: credsBindpw,
+                            pwInputInterractive: pwInputInterractive
                         }
                     ]
                 }));
@@ -483,7 +486,7 @@ export class ReplMonitor extends React.Component {
         });
     }
 
-    handleShowAddCredsModal() {
+    showAddCredsModal() {
         this.openCredsModal();
         this.setState({
             newEntry: true,
@@ -517,7 +520,7 @@ export class ReplMonitor extends React.Component {
         });
     }
 
-    handleCredSort(_event, index, direction) {
+    onCredSort(_event, index, direction) {
         const sorted_creds = [];
         const rows = [];
 
@@ -554,7 +557,7 @@ export class ReplMonitor extends React.Component {
         });
     }
 
-    handleAliasSort(_event, index, direction) {
+    onAliasSort(_event, index, direction) {
         const sorted_alias = [];
         const rows = [];
 
@@ -591,10 +594,10 @@ export class ReplMonitor extends React.Component {
             this.props.addNotification("warning", "Host, Port, and Alias are required.");
         } else {
             let aliasExists = false;
-            if ((action === "add") && (aliasesList.some(row => row[0] === aliasName))) {
+            if ((action == "add") && (aliasesList.some(row => row[0] === aliasName))) {
                 aliasExists = true;
             }
-            if ((action === "edit") && (aliasesList.some(row => row[0] === oldAliasName))) {
+            if ((action == "edit") && (aliasesList.some(row => row[0] === oldAliasName))) {
                 new_aliases = aliasesList.filter(row => row[0] !== oldAliasName);
             }
 
@@ -631,7 +634,7 @@ export class ReplMonitor extends React.Component {
         });
     }
 
-    handleShowAddAliasesModal() {
+    showAddAliasesModal() {
         this.openAliasesModal();
         this.setState({
             newEntry: true,
@@ -659,7 +662,7 @@ export class ReplMonitor extends React.Component {
         });
     }
 
-    handleConfirmOverwriteDSRC() {
+    showConfirmOverwriteDSRC() {
         this.setState({
             showConfirmOverwriteDSRC: true
         });
@@ -679,21 +682,21 @@ export class ReplMonitor extends React.Component {
                 .spawn(dsrc_cmd, { superuser: true, err: "message" })
                 .done(dsrc_content => {
                     const content = JSON.parse(dsrc_content);
-                    const dsrcCreds = [];
-                    const dsrcAliases = [];
+                    let dsrcCreds = [];
+                    let dsrcAliases = [];
                     let deleteCmd = ["dsctl", "-j", this.props.serverId, "dsrc", "repl-mon"];
-                    const addCmd = ["dsctl", "-j", this.props.serverId, "dsrc", "repl-mon"];
+                    let addCmd = ["dsctl", "-j", this.props.serverId, "dsrc", "repl-mon"];
 
                     // Gather the names of the replica connections and aliases
                     if ("repl-monitor-connections" in content) {
                         const report_config = content["repl-monitor-connections"];
-                        for (const [cred,] of Object.entries(report_config)) {
+                        for (const [cred, value] of Object.entries(report_config)) {
                             dsrcCreds.push(cred);
                         }
                     }
                     if ("repl-monitor-aliases" in content) {
                         const report_config = content["repl-monitor-aliases"];
-                        for (const [alias,] of Object.entries(report_config)) {
+                        for (const [alias, value] of Object.entries(report_config)) {
                             dsrcAliases.push(alias);
                         }
                     }
@@ -714,7 +717,7 @@ export class ReplMonitor extends React.Component {
                         }
                     }
                     if (deleteCmd.length === 5) {
-                        deleteCmd = "echo"; // do nothing
+                        deleteCmd == "echo";  // do nothing
                     }
 
                     // Write new replica connections and aliases
@@ -741,11 +744,11 @@ export class ReplMonitor extends React.Component {
                     log_cmd("overwriteDSRC", "delete conns and aliases in the .dsrc file", deleteCmd);
                     cockpit
                             .spawn(deleteCmd, { superuser: true, err: "message" })
-                            .done(() => {
+                            .done( () => {
                                 log_cmd("overwriteDSRC", "add conns and aliases in the .dsrc file", addCmd);
                                 cockpit
                                         .spawn(addCmd, { superuser: true, err: "message" })
-                                        .done(() => {
+                                        .done( () => {
                                             this.setState({
                                                 showConfirmOverwriteDSRC: false
                                             }, this.loadDSRC);
@@ -764,17 +767,17 @@ export class ReplMonitor extends React.Component {
                                                 `Failed to delete from .dsrc file: ${errMsg.desc}`
                                             );
                                         });
-                            })
-                            .fail(err => {
-                                const errMsg = JSON.parse(err);
-                                this.props.addNotification(
-                                    "error",
-                                    `Failed to add to .dsrc content: ${errMsg.desc}`
-                                );
-                                this.setState({
-                                    showConfirmOverwriteDSRC: false
+                                })
+                                .fail(err => {
+                                    const errMsg = JSON.parse(err);
+                                    this.props.addNotification(
+                                        "error",
+                                        `Failed to add to .dsrc content: ${errMsg.desc}`
+                                    );
+                                    this.setState({
+                                        showConfirmOverwriteDSRC: false
+                                    });
                                 });
-                            });
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
@@ -789,13 +792,13 @@ export class ReplMonitor extends React.Component {
     }
 
     refreshFullReport() {
-        this.handleFullReport();
+        this.doFullReport();
         this.setState({
             reportRefreshing: true
         });
     }
 
-    handleFullReport(dsrc) {
+    doFullReport(dsrc) {
         // Initiate the report and continue the processing in the input window
         this.setState({
             reportLoading: true,
@@ -840,7 +843,7 @@ export class ReplMonitor extends React.Component {
             "monitor"
         ];
 
-        if (aliases.length !== 0) {
+        if (aliases.length != 0) {
             cmd = [...cmd, "-a"];
             for (const value of aliases) {
                 cmd = [...cmd, value];
@@ -849,7 +852,7 @@ export class ReplMonitor extends React.Component {
 
         // We should not print the passwords to console.log
         let printCmd = cmd;
-        if (credentials.length !== 0) {
+        if (credentials.length != 0) {
             cmd = [...cmd, "-c"];
             for (const value of credentials) {
                 cmd = [...cmd, value];
@@ -860,7 +863,7 @@ export class ReplMonitor extends React.Component {
             }
         }
 
-        log_cmd("handleFullReport", "Get the report for the current instance topology", printCmd);
+        log_cmd("doFullReport", "Get the report for the current instance topology", printCmd);
         // We need to set it here because 'input' will be run from inside
         const proc = cockpit.spawn(cmd, { pty: true, environ: ["LC_ALL=C"], superuser: true, err: "message", directory: self.path });
         // We use it in processCredsInput
@@ -880,7 +883,7 @@ export class ReplMonitor extends React.Component {
                         for (const replica of supplier.data) {
                             agmts_reparsed = [];
                             let agmts_done = false;
-                            if ('agmts_status' in replica) {
+                            if (replica.hasOwnProperty("agmts_status")) {
                                 for (const agmt of replica.agmts_status) {
                                     // We need this for Agreement View Modal
                                     agmt.supplierName = [supplier.name];
@@ -946,7 +949,7 @@ export class ReplMonitor extends React.Component {
 
                         // First check if DN is in the list already (either from previous run or during this execution)
                         for (const creds of this.state.dynamicCredentialsList) {
-                            if (creds.credsInstanceName === this.state.credsInstanceName) {
+                            if (creds.credsInstanceName == this.state.credsInstanceName) {
                                 found_creds = true;
                                 proc.input(`${creds.binddn}\n`, true);
                             }
@@ -964,7 +967,7 @@ export class ReplMonitor extends React.Component {
                         }
 
                     // Check for password
-                    } else if ((last_line.startsWith("Enter a password") || last_line.startsWith("File ")) && last_line.endsWith(": ")) {
+                } else if ((last_line.startsWith("Enter a password") || last_line.startsWith("File ")) && last_line.endsWith(": ")) {
                         buffer = "";
                         // Do the same logic for password but the string parsing is different
                         this.setState({
@@ -972,7 +975,7 @@ export class ReplMonitor extends React.Component {
                         });
 
                         for (const creds of this.state.dynamicCredentialsList) {
-                            if (creds.credsInstanceName === this.state.credsInstanceName) {
+                            if (creds.credsInstanceName == this.state.credsInstanceName) {
                                 found_creds = true;
                                 proc.input(`${creds.bindpw}\n`, true);
                                 this.setState({
@@ -1011,7 +1014,7 @@ export class ReplMonitor extends React.Component {
             fullReportProcess
         } = this.state;
 
-        if (loginBinddn === "" || loginBindpw === "") {
+        if (loginBinddn == "" || loginBindpw == "") {
             this.props.addNotification("warning", "Bind DN and password are required.");
         } else {
             this.setState({
@@ -1026,7 +1029,7 @@ export class ReplMonitor extends React.Component {
                     {
                         binddn: loginBinddn,
                         bindpw: loginBindpw,
-                        credsInstanceName
+                        credsInstanceName: credsInstanceName
                     }
                 ]
             }));
@@ -1055,7 +1058,7 @@ export class ReplMonitor extends React.Component {
     }
 
     // dsrc
-    handleShowAddDSRCCred() {
+    showAddDSRCCred() {
         // Add a connection to dsrc file
         this.setState({
             showAddDSRCCredModal: true,
@@ -1075,7 +1078,7 @@ export class ReplMonitor extends React.Component {
         });
     }
 
-    handleShowAddDSRCAlias() {
+    showAddDSRCAlias() {
         // Add alias to dsrc file
         this.setState({
             showAddDSRCAliasModal: true,
@@ -1257,28 +1260,27 @@ export class ReplMonitor extends React.Component {
         const winsyncAgmtDetailModal = "";
 
         if (this.state.showReportLoginModal) {
-            reportLoginModal = (
+            reportLoginModal =
                 <ReportLoginModal
                     showModal={this.state.showReportLoginModal}
                     closeHandler={this.closeReportLoginModal}
-                    handleChange={this.onFieldChange}
+                    handleChange={this.handleFieldChange}
                     processCredsInput={this.processCredsInput}
                     instanceName={this.state.credsInstanceName}
                     disableBinddn={this.state.disableBinddn}
                     loginBinddn={this.state.loginBinddn}
                     loginBindpw={this.state.loginBindpw}
-                />
-            );
+                />;
         }
         if (this.state.showCredentialsModal) {
-            reportCredentialsModal = (
+            reportCredentialsModal =
                 <ReportCredentialsModal
                     showModal={this.state.showCredentialsModal}
                     closeHandler={this.closeCredsModal}
-                    handleFieldChange={this.onFieldChange}
-                    onMinusConfig={this.handleMinusConfig}
-                    onConfigChange={this.handleConfigChange}
-                    onPlusConfig={this.handlePlusConfig}
+                    handleFieldChange={this.handleFieldChange}
+                    onMinusConfig={this.onMinusConfig}
+                    onConfigChange={this.onConfigChange}
+                    onPlusConfig={this.onPlusConfig}
                     newEntry={this.state.newEntry}
                     hostname={this.state.credsHostname}
                     port={this.state.credsPort}
@@ -1287,35 +1289,32 @@ export class ReplMonitor extends React.Component {
                     pwInputInterractive={this.state.pwInputInterractive}
                     addConfig={this.addCreds}
                     editConfig={this.editCreds}
-                />
-            );
+                />;
         }
         if (this.state.showAliasesModal) {
-            reportAliasesModal = (
+            reportAliasesModal =
                 <ReportAliasesModal
                     showModal={this.state.showAliasesModal}
                     closeHandler={this.closeAliasesModal}
-                    handleFieldChange={this.onFieldChange}
-                    onMinusConfig={this.handleMinusConfig}
-                    onConfigChange={this.handleConfigChange}
-                    onPlusConfig={this.handlePlusConfig}
+                    handleFieldChange={this.handleFieldChange}
+                    onMinusConfig={this.onMinusConfig}
+                    onConfigChange={this.onConfigChange}
+                    onPlusConfig={this.onPlusConfig}
                     newEntry={this.state.newEntry}
                     hostname={this.state.aliasHostname}
                     port={this.state.aliasPort}
                     alias={this.state.aliasName}
                     addConfig={this.addAliases}
                     editConfig={this.editAliases}
-                />
-            );
+                />;
         }
         if (this.state.showAgmtModal) {
-            agmtDetailModal = (
+            agmtDetailModal =
                 <AgmtDetailsModal
                     showModal={this.state.showAgmtModal}
                     closeHandler={this.closeAgmtModal}
                     agmt={this.state.agmt}
-                />
-            );
+                />;
         }
 
         let reportBtnName = "Generate Report";
@@ -1325,7 +1324,7 @@ export class ReplMonitor extends React.Component {
             extraPrimaryProps.spinnerAriaValueText = "Generating";
         }
 
-        let reportContent = (
+        let reportContent =
             <div className="ds-margin-top-lg ds-indent ds-margin-bottom-md">
                 <Tabs isFilled activeKey={this.state.activeKey} onSelect={this.handleNavSelect}>
                     <Tab eventKey={0} title={<TabTitleText>Saved Report Configuration</TabTitleText>}>
@@ -1339,7 +1338,7 @@ export class ReplMonitor extends React.Component {
                                 <Button
                                     className="ds-margin-top-lg"
                                     variant="secondary"
-                                    onClick={this.handleShowAddDSRCCred}
+                                    onClick={this.showAddDSRCCred}
                                     title="Add a replica credential to the .dsrc file"
                                 >
                                     Add Connection
@@ -1354,7 +1353,7 @@ export class ReplMonitor extends React.Component {
                                 <Button
                                     className="ds-margin-top-lg"
                                     variant="secondary"
-                                    onClick={this.handleShowAddDSRCAlias}
+                                    onClick={this.showAddDSRCAlias}
                                     title="Add a replica alias to the .dsrc file"
                                 >
                                     Add Alias
@@ -1365,7 +1364,7 @@ export class ReplMonitor extends React.Component {
                         {this.state.credRows.length > 0 && (
                             <Button
                                 variant="primary"
-                                onClick={() => { this.handleFullReport(1) }}
+                                onClick={() => { this.doFullReport(1) }}
                                 title="Use the specified credentials and display full topology report"
                                 isLoading={this.state.reportLoading}
                                 isDisabled={this.state.reportLoading}
@@ -1376,10 +1375,10 @@ export class ReplMonitor extends React.Component {
                             </Button>
                         )}
                     </Tab>
-                    <Tab eventKey={1} id="prepare-new-report" title={<TabTitleText>Prepare New Report</TabTitleText>}>
+                    <Tab eventKey={1} id="prepare-new-report" title={<TabTitleText>{"Prepare New Report"}</TabTitleText>}>
                         <ExpandableSection
                             toggleText={this.state.isExpanded ? 'Hide Help' : 'Show Help'}
-                            onToggle={this.handleToggle}
+                            onToggle={this.onToggle}
                             isExpanded={this.state.isExpanded}
                             className="ds-margin-top-lg ds-left-margin"
                         >
@@ -1428,7 +1427,7 @@ export class ReplMonitor extends React.Component {
                         <Button
                             className="ds-margin-top-lg"
                             variant="primary"
-                            onClick={this.handleFullReport}
+                            onClick={this.doFullReport}
                             title="Use the specified credentials and display full topology report"
                             isLoading={this.state.reportLoading}
                             isDisabled={this.state.reportLoading}
@@ -1440,7 +1439,7 @@ export class ReplMonitor extends React.Component {
                         <Button
                             className="ds-margin-top-lg ds-left-margin"
                             variant="secondary"
-                            onClick={this.handleConfirmOverwriteDSRC}
+                            onClick={this.showConfirmOverwriteDSRC}
                             title="Save the report configuration in the .dsrc file for future use."
                         >
                             Save Report Configuration
@@ -1451,12 +1450,12 @@ export class ReplMonitor extends React.Component {
                             deleteConfig={this.removeCreds}
                             editConfig={this.showEditCredsModal}
                             sortBy={this.state.credSortBy}
-                            onSort={this.handleCredSort}
+                            onSort={this.onCredSort}
                         />
                         <Button
                             className="ds-margin-top"
                             variant="secondary"
-                            onClick={this.handleShowAddCredsModal}
+                            onClick={this.showAddCredsModal}
                         >
                             Add Credentials
                         </Button>
@@ -1465,18 +1464,18 @@ export class ReplMonitor extends React.Component {
                             deleteConfig={this.removeAliases}
                             editConfig={this.showEditAliasesModal}
                             sortBy={this.state.aliasSortBy}
-                            onSort={this.handleAliasSort}
+                            onSort={this.onAliasSort}
                         />
                         <Button
                             className="ds-margin-top"
                             variant="secondary"
-                            onClick={this.handleShowAddAliasesModal}
+                            onClick={this.showAddAliasesModal}
                         >
                             Add Alias
                         </Button>
                     </Tab>
                     {reportData.length > 0 && (
-                        <Tab eventKey={2} title={<TabTitleText>Report Result</TabTitleText>}>
+                        <Tab eventKey={2} title={<TabTitleText>{"Report Result"}</TabTitleText>}>
                             <div className="ds-indent ds-margin-top-lg">
                                 <FullReportContent
                                     reportData={reportData}
@@ -1489,11 +1488,10 @@ export class ReplMonitor extends React.Component {
                         </Tab>
                     )}
                 </Tabs>
-            </div>
-        );
+            </div>;
 
         if (this.state.loadingDSRC) {
-            reportContent = (
+            reportContent =
                 <div className="ds-margin-top-xlg ds-center">
                     <TextContent>
                         <Text component={TextVariants.h3}>
@@ -1501,8 +1499,7 @@ export class ReplMonitor extends React.Component {
                         </Text>
                     </TextContent>
                     <Spinner className="ds-margin-top-lg" size="xl" />
-                </div>
-            );
+                </div>;
         }
 
         let overwriteWarning = (
@@ -1510,7 +1507,7 @@ export class ReplMonitor extends React.Component {
             "'~/.dsrc' file.  There is already an existing monitor " +
             "configuration, and if you proceed it will be completely " +
             "overwritten with the new configuraton.");
-        if (this.state.credRows.length === 0 && this.state.aliasRows.length === 0) {
+        if (this.state.credRows.length == 0 && this.state.aliasRows.length == 0) {
             overwriteWarning = (
                 "This will save the current credentials and aliases to the " +
                 "server's '~/.dsrc' file so it can be reused in the future.");
@@ -1527,7 +1524,7 @@ export class ReplMonitor extends React.Component {
                                 className="ds-left-margin ds-refresh"
                                 icon={faSyncAlt}
                                 title="Refresh replication monitor"
-                                onClick={this.props.handleReload}
+                                onClick={this.props.reload}
                             />
                         </Text>
                     </TextContent>
@@ -1543,7 +1540,7 @@ export class ReplMonitor extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmDeleteDSRCCred}
                     closeHandler={this.closeConfirmDeleteDSRCCred}
-                    handleChange={this.onFieldChange}
+                    handleChange={this.handleFieldChange}
                     actionHandler={this.deleteDSRCCred}
                     spinning={this.state.modalSpinning}
                     item={this.state.connName}
@@ -1556,7 +1553,7 @@ export class ReplMonitor extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmDeleteDSRCAlias}
                     closeHandler={this.closeConfirmDeleteDSRCAlias}
-                    handleChange={this.onFieldChange}
+                    handleChange={this.handleFieldChange}
                     actionHandler={this.deleteDSRCAlias}
                     spinning={this.state.modalSpinning}
                     item={this.state.aliasName}
@@ -1569,7 +1566,7 @@ export class ReplMonitor extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmOverwriteDSRC}
                     closeHandler={this.closeConfirmOverwriteDSRC}
-                    handleChange={this.onFieldChange}
+                    handleChange={this.handleFieldChange}
                     actionHandler={this.overwriteDSRC}
                     spinning={this.state.modalSpinning}
                     item="Are you sure you want to proceed?"
@@ -1582,10 +1579,10 @@ export class ReplMonitor extends React.Component {
                 <ReportAliasesModal
                     showModal={this.state.showAddDSRCAliasModal}
                     closeHandler={this.closeAddDSRCAlias}
-                    handleFieldChange={this.onFieldChange}
-                    onMinusConfig={this.handleMinusConfig}
-                    onConfigChange={this.handleConfigChange}
-                    onPlusConfig={this.handlePlusConfig}
+                    handleFieldChange={this.handleFieldChange}
+                    onMinusConfig={this.onMinusConfig}
+                    onConfigChange={this.onConfigChange}
+                    onPlusConfig={this.onPlusConfig}
                     newEntry={this.state.newEntry}
                     hostname={this.state.aliasHostname}
                     port={this.state.aliasPort}
@@ -1596,10 +1593,10 @@ export class ReplMonitor extends React.Component {
                 <ReportConnectionModal
                     showModal={this.state.showAddDSRCCredModal}
                     closeHandler={this.closeAddDSRCCred}
-                    handleFieldChange={this.onFieldChange}
-                    onMinusConfig={this.handleMinusConfig}
-                    onConfigChange={this.handleConfigChange}
-                    onPlusConfig={this.handlePlusConfig}
+                    handleFieldChange={this.handleFieldChange}
+                    onMinusConfig={this.onMinusConfig}
+                    onConfigChange={this.onConfigChange}
+                    onPlusConfig={this.onPlusConfig}
                     name={this.state.connName}
                     hostname={this.state.connHostname}
                     port={this.state.connPort}

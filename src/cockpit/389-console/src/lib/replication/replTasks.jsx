@@ -43,16 +43,16 @@ export class ReplRUV extends React.Component {
         };
         this.showConfirmCleanRUV = this.showConfirmCleanRUV.bind(this);
         this.closeConfirmCleanRUV = this.closeConfirmCleanRUV.bind(this);
-        this.handleShowConfirmCLImport = this.handleShowConfirmCLImport.bind(this);
+        this.showConfirmCLImport = this.showConfirmCLImport.bind(this);
         this.closeConfirmCLImport = this.closeConfirmCLImport.bind(this);
-        this.handleShowCLExport = this.handleShowCLExport.bind(this);
+        this.showCLExport = this.showCLExport.bind(this);
         this.closeCLExport = this.closeCLExport.bind(this);
         this.showConfirmExport = this.showConfirmExport.bind(this);
         this.closeConfirmExport = this.closeConfirmExport.bind(this);
         this.handleLDIFChange = this.handleLDIFChange.bind(this);
-        this.onCLLDIFChange = this.onCLLDIFChange.bind(this);
-        this.onRadioChange = this.onRadioChange.bind(this);
-        this.onChange = this.onChange.bind(this);
+        this.handleCLLDIFChange = this.handleCLLDIFChange.bind(this);
+        this.handleRadioChange = this.handleRadioChange.bind(this);
+        this.handleChange = this.handleChange.bind(this);
         this.cleanRUV = this.cleanRUV.bind(this);
         this.exportChangelog = this.exportChangelog.bind(this);
         this.importChangelog = this.importChangelog.bind(this);
@@ -60,7 +60,7 @@ export class ReplRUV extends React.Component {
 
     showConfirmCleanRUV (rid) {
         this.setState({
-            rid,
+            rid: rid,
             showConfirmCleanRUV: true,
             modalChecked: false,
             modalSpinning: false,
@@ -75,7 +75,7 @@ export class ReplRUV extends React.Component {
         });
     }
 
-    handleShowConfirmCLImport () {
+    showConfirmCLImport () {
         this.setState({
             showConfirmCLImport: true,
             modalChecked: false,
@@ -91,7 +91,7 @@ export class ReplRUV extends React.Component {
         });
     }
 
-    handleShowCLExport () {
+    showCLExport () {
         this.setState({
             saveOK: true,
             showCLExport: true,
@@ -123,18 +123,18 @@ export class ReplRUV extends React.Component {
         });
     }
 
-    onRadioChange(_, e) {
+    handleRadioChange(_, e) {
         // Handle the changelog export options
         let defaultCL = false;
         let debugCL = false;
-        if (e.target.id === "defaultCL") {
+        if (e.target.id == "defaultCL") {
             defaultCL = true;
-        } else if (e.target.id === "debugCL") {
+        } else if (e.target.id == "debugCL") {
             debugCL = true;
         }
         this.setState({
-            defaultCL,
-            debugCL,
+            defaultCL: defaultCL,
+            debugCL: debugCL,
         });
     }
 
@@ -167,28 +167,28 @@ export class ReplRUV extends React.Component {
     handleLDIFChange (e) {
         const value = e.target.value;
         let saveOK = true;
-        if (value === "" || bad_file_name(value)) {
+        if (value == "" || bad_file_name(value)) {
             saveOK = false;
         }
         this.setState({
             [e.target.id]: value,
-            saveOK
+            saveOK: saveOK
         });
     }
 
-    onCLLDIFChange (e) {
+    handleCLLDIFChange (e) {
         const value = e.target.value;
         let saveOK = true;
-        if (value === "" || value.indexOf(' ') >= 0) {
+        if (value == "" || value.indexOf(' ') >= 0) {
             saveOK = false;
         }
         this.setState({
             [e.target.id]: value,
-            saveOK
+            saveOK: saveOK
         });
     }
 
-    onChange (e) {
+    handleChange (e) {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
         this.setState({
             [e.target.id]: value,
@@ -234,7 +234,7 @@ export class ReplRUV extends React.Component {
 
     exportChangelog () {
         // Do changelog export
-        const cmd = [
+        let cmd = [
             "dsconf", "-j", "ldapi://%2fvar%2frun%2fslapd-" + this.props.serverId + ".socket",
             "replication", "export-changelog"
         ];
@@ -296,7 +296,7 @@ export class ReplRUV extends React.Component {
         let localMinCSN = "";
         let localRawMinCSN = "";
         for (const row of this.props.rows) {
-            if (row.rid === this.props.localRID) {
+            if (row.rid == this.props.localRID) {
                 localRID = row.rid;
                 localURL = row.url;
                 localCSN = row.maxcsn;
@@ -307,7 +307,7 @@ export class ReplRUV extends React.Component {
                 remote_rows.push(row);
             }
         }
-        let localRUV = (
+        let localRUV =
             <div className="ds-left-indent-md">
                 <Grid className="ds-margin-top-med">
                     <GridItem span={2}>
@@ -341,25 +341,22 @@ export class ReplRUV extends React.Component {
                         <b>{localCSN}</b> ({localRawCSN})
                     </GridItem>
                 </Grid>
-            </div>
-        );
+            </div>;
 
-        if (localRID === "") {
-            localRUV = (
-                <div className="ds-indent ds-margin-top">
+        if (localRID == "") {
+            localRUV =
+                <div className="ds-indent">
                     <i>
                         There is no local RUV, the database might not have been initialized yet.
                     </i>
-                </div>
-            );
+                </div>;
         }
 
         return (
             <div className="ds-margin-top-xlg ds-indent">
                 <TextContent>
                     <Text component={TextVariants.h3}>
-                        Local RUV
-                        <FontAwesomeIcon
+                        Local RUV <FontAwesomeIcon
                             size="lg"
                             className="ds-left-margin ds-refresh"
                             icon={faSyncAlt}
@@ -373,8 +370,7 @@ export class ReplRUV extends React.Component {
                 {localRUV}
                 <TextContent className="ds-margin-top-xlg">
                     <Text component={TextVariants.h3}>
-                        Remote RUV's
-                        <FontAwesomeIcon
+                        Remote RUV's <FontAwesomeIcon
                             size="lg"
                             className="ds-left-margin ds-refresh"
                             icon={faSyncAlt}
@@ -404,7 +400,7 @@ export class ReplRUV extends React.Component {
                         >
                             <Button
                                 variant="primary"
-                                onClick={this.handleShowCLExport}
+                                onClick={this.showCLExport}
                             >
                                 Export Changelog
                             </Button>
@@ -422,7 +418,7 @@ export class ReplRUV extends React.Component {
                         >
                             <Button
                                 variant="primary"
-                                onClick={this.handleShowConfirmCLImport}
+                                onClick={this.showConfirmCLImport}
                             >
                                 Import Changelog
                             </Button>
@@ -438,7 +434,7 @@ export class ReplRUV extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmCleanRUV}
                     closeHandler={this.closeConfirmCleanRUV}
-                    handleChange={this.onChange}
+                    handleChange={this.handleChange}
                     actionHandler={this.cleanRUV}
                     spinning={this.state.modalSpinning}
                     item={"Replica ID " + this.state.rid}
@@ -451,7 +447,7 @@ export class ReplRUV extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmCLImport}
                     closeHandler={this.closeConfirmCLImport}
-                    handleChange={this.onChange}
+                    handleChange={this.handleChange}
                     actionHandler={this.importChangelog}
                     spinning={this.state.modalSpinning}
                     item={"Replicated Suffix " + this.props.suffix}
@@ -464,9 +460,9 @@ export class ReplRUV extends React.Component {
                 <ExportCLModal
                     showModal={this.state.showCLExport}
                     closeHandler={this.closeCLExport}
-                    handleChange={this.onChange}
-                    handleLDIFChange={this.onCLLDIFChange}
-                    handleRadioChange={this.onRadioChange}
+                    handleChange={this.handleChange}
+                    handleLDIFChange={this.handleCLLDIFChange}
+                    handleRadioChange={this.handleRadioChange}
                     saveHandler={this.exportChangelog}
                     defaultCL={this.state.defaultCL}
                     debugCL={this.state.debugCL}

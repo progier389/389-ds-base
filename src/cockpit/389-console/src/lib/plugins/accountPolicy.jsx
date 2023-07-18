@@ -37,18 +37,18 @@ class AccountPolicy extends React.Component {
         super(props);
 
         this.updateFields = this.updateFields.bind(this);
-        this.onChange = this.onChange.bind(this);
+        this.handleChange = this.handleChange.bind(this);
         this.handleFieldChange = this.handleFieldChange.bind(this);
         this.handleModalChange = this.handleModalChange.bind(this);
         this.handleCheckboxChange = this.handleCheckboxChange.bind(this);
-        this.handleOpenModal = this.handleOpenModal.bind(this);
-        this.handleCloseModal = this.handleCloseModal.bind(this);
-        this.handleAddConfig = this.handleAddConfig.bind(this);
-        this.handleEditConfig = this.handleEditConfig.bind(this);
+        this.openModal = this.openModal.bind(this);
+        this.closeModal = this.closeModal.bind(this);
+        this.addConfig = this.addConfig.bind(this);
+        this.editConfig = this.editConfig.bind(this);
         this.deleteConfig = this.deleteConfig.bind(this);
-        this.handleSaveConfig = this.handleSaveConfig.bind(this);
+        this.saveConfig = this.saveConfig.bind(this);
         this.cmdOperation = this.cmdOperation.bind(this);
-        this.handleShowConfirmDelete = this.handleShowConfirmDelete.bind(this);
+        this.showConfirmDelete = this.showConfirmDelete.bind(this);
         this.closeConfirmDelete = this.closeConfirmDelete.bind(this);
         this.sharedConfigExists = this.sharedConfigExists.bind(this);
         this.validateConfig = this.validateConfig.bind(this);
@@ -97,9 +97,9 @@ class AccountPolicy extends React.Component {
         };
 
         // Always Record Login Attribute
-        this.handleRecordLoginSelect = (event, selection) => {
-            if (selection === this.state.alwaysRecordLoginAttr) {
-                this.handleRecordLoginClear();
+        this.onRecordLoginSelect = (event, selection) => {
+            if (selection == this.state.alwaysRecordLoginAttr) {
+                this.onRecordLoginClear();
             } else {
                 this.setState({
                     alwaysRecordLoginAttr: selection,
@@ -107,12 +107,12 @@ class AccountPolicy extends React.Component {
                 }, () => { this.validateConfig() });
             }
         };
-        this.handleRecordLoginToggle = isRecordLoginOpen => {
+        this.onRecordLoginToggle = isRecordLoginOpen => {
             this.setState({
                 isRecordLoginOpen
             });
         };
-        this.handleRecordLoginClear = () => {
+        this.onRecordLoginClear = () => {
             this.setState({
                 alwaysRecordLoginAttr: "",
                 isRecordLoginOpen: false
@@ -120,9 +120,9 @@ class AccountPolicy extends React.Component {
         };
 
         // Specific Attribute
-        this.handleSpecificAttrSelect = (event, selection) => {
-            if (selection === this.state.specAttrName) {
-                this.handleSpecificAttrClear();
+        this.onSpecificAttrSelect = (event, selection) => {
+            if (selection == this.state.specAttrName) {
+                this.onSpecificAttrClear();
             } else {
                 this.setState({
                     specAttrName: selection,
@@ -130,12 +130,12 @@ class AccountPolicy extends React.Component {
                 }, () => { this.validateConfig() });
             }
         };
-        this.handleSpecificAttrToggle = isSpecificAttrOpen => {
+        this.onSpecificAttrToggle = isSpecificAttrOpen => {
             this.setState({
                 isSpecificAttrOpen
             });
         };
-        this.handleSpecificAttrClear = () => {
+        this.onSpecificAttrClear = () => {
             this.setState({
                 specAttrName: [],
                 isSpecificAttrOpen: false
@@ -143,9 +143,9 @@ class AccountPolicy extends React.Component {
         };
 
         // State Attribute
-        this.handleStateAttrSelect = (event, selection) => {
-            if (selection === this.state.stateAttrName) {
-                this.handleStateAttrClear();
+        this.onStateAttrSelect = (event, selection) => {
+            if (selection == this.state.stateAttrName) {
+                this.onStateAttrClear();
             } else {
                 this.setState({
                     stateAttrName: selection,
@@ -153,12 +153,12 @@ class AccountPolicy extends React.Component {
                 }, () => { this.validateConfig() });
             }
         };
-        this.handleStateAttrToggle = isStateAttrOpen => {
+        this.onStateAttrToggle = isStateAttrOpen => {
             this.setState({
                 isStateAttrOpen
             });
         };
-        this.handleStateAttrClear = () => {
+        this.onStateAttrClear = () => {
             this.setState({
                 stateAttrName: [],
                 isStateAttrOpen: false
@@ -166,9 +166,9 @@ class AccountPolicy extends React.Component {
         };
 
         // Alternative State Attribute
-        this.handleAlternativeStateSelect = (event, selection) => {
-            if (selection === this.state.altStateAttrName) {
-                this.handleAlternativeStateClear();
+        this.onAlternativeStateSelect = (event, selection) => {
+            if (selection == this.state.altStateAttrName) {
+                this.onAlternativeStateClear();
             } else {
                 this.setState({
                     altStateAttrName: selection,
@@ -176,12 +176,12 @@ class AccountPolicy extends React.Component {
                 }, () => { this.validateConfig() });
             }
         };
-        this.handleAlternativeStateToggle = isAltStateAttrOpen => {
+        this.onAlternativeStateToggle = isAltStateAttrOpen => {
             this.setState({
                 isAltStateAttrOpen
             });
         };
-        this.handleAlternativeStateClear = () => {
+        this.onAlternativeStateClear = () => {
             this.setState({
                 altStateAttrName: [],
                 isAltStateAttrOpen: false
@@ -189,9 +189,9 @@ class AccountPolicy extends React.Component {
         };
 
         // Limit Attribute
-        this.handleLimitAttrSelect = (event, selection) => {
-            if (selection === this.state.limitAttrName) {
-                this.handleLimitAttrClear();
+        this.onLimitAttrSelect = (event, selection) => {
+            if (selection == this.state.limitAttrName) {
+                this.onLimitAttrClear();
             } else {
                 this.setState({
                     limitAttrName: selection,
@@ -199,12 +199,12 @@ class AccountPolicy extends React.Component {
                 }, () => { this.validateConfig() });
             }
         };
-        this.handleLimitAttrToggle = isLimitAttrOpen => {
+        this.onLimitAttrToggle = isLimitAttrOpen => {
             this.setState({
                 isLimitAttrOpen
             });
         };
-        this.handleLimitAttrClear = () => {
+        this.onLimitAttrClear = () => {
             this.setState({
                 limitAttrName: [],
                 isLimitAttrOpen: false
@@ -212,7 +212,7 @@ class AccountPolicy extends React.Component {
         };
     }
 
-    handleShowConfirmDelete() {
+    showConfirmDelete() {
         this.setState({
             showConfirmDelete: true,
             modalChecked: false,
@@ -263,7 +263,7 @@ class AccountPolicy extends React.Component {
         }
     }
 
-    handleOpenModal() {
+    openModal() {
         if (!this.state.configArea) {
             this.setState({
                 configEntryModalShow: true,
@@ -299,7 +299,7 @@ class AccountPolicy extends React.Component {
                 this.state.configArea
             ];
 
-            log_cmd("handleOpenModal", "Fetch the Account Policy Plugin config entry", cmd);
+            log_cmd("openModal", "Fetch the Account Policy Plugin config entry", cmd);
             cockpit
                     .spawn(cmd, {
                         superuser: true,
@@ -320,7 +320,7 @@ class AccountPolicy extends React.Component {
                                 : configEntry.altstateattrname[0],
                             alwaysRecordLogin: !(
                                 configEntry.alwaysrecordlogin === undefined ||
-                            configEntry.alwaysrecordlogin[0] === "no"
+                            configEntry.alwaysrecordlogin[0] == "no"
                             ),
                             alwaysRecordLoginAttr:
                             configEntry.alwaysrecordloginattr === undefined
@@ -340,7 +340,7 @@ class AccountPolicy extends React.Component {
                                 : configEntry.stateattrname[0],
                             checkAllStateAttrs: !(
                                 configEntry.checkallstateattrs === undefined ||
-                            configEntry.checkallstateattrs[0] === "no"
+                            configEntry.checkallstateattrs[0] == "no"
                             ),
                             // original values
                             _altStateAttrName:
@@ -349,7 +349,7 @@ class AccountPolicy extends React.Component {
                                 : configEntry.altstateattrname[0],
                             _alwaysRecordLogin: !(
                                 configEntry.alwaysrecordlogin === undefined ||
-                            configEntry.alwaysrecordlogin[0] === "no"
+                            configEntry.alwaysrecordlogin[0] == "no"
                             ),
                             _alwaysRecordLoginAttr:
                             configEntry.alwaysrecordloginattr === undefined
@@ -369,7 +369,7 @@ class AccountPolicy extends React.Component {
                                 : configEntry.stateattrname[0],
                             _checkAllStateAttrs: !(
                                 configEntry.checkallstateattrs === undefined ||
-                            configEntry.checkallstateattrs[0] === "no"
+                            configEntry.checkallstateattrs[0] == "no"
                             ),
                         });
                     })
@@ -398,7 +398,7 @@ class AccountPolicy extends React.Component {
         }
     }
 
-    handleCloseModal() {
+    closeModal() {
         this.setState({ configEntryModalShow: false });
     }
 
@@ -430,51 +430,51 @@ class AccountPolicy extends React.Component {
         ];
 
         cmd = [...cmd, "--alt-state-attr"];
-        if (altStateAttrName !== "") {
+        if (altStateAttrName != "") {
             cmd = [...cmd, altStateAttrName];
-        } else if (action === "add") {
+        } else if (action == "add") {
             cmd = [...cmd, ""];
         } else {
             cmd = [...cmd, "delete"];
         }
 
         cmd = [...cmd, "--always-record-login-attr"];
-        if (alwaysRecordLoginAttr !== "") {
+        if (alwaysRecordLoginAttr != "") {
             cmd = [...cmd, alwaysRecordLoginAttr];
-        } else if (action === "add") {
+        } else if (action == "add") {
             cmd = [...cmd, ""];
         } else {
             cmd = [...cmd, "delete"];
         }
 
         cmd = [...cmd, "--limit-attr"];
-        if (limitAttrName !== "") {
+        if (limitAttrName != "") {
             cmd = [...cmd, limitAttrName];
-        } else if (action === "add") {
+        } else if (action == "add") {
             cmd = [...cmd, ""];
         } else {
             cmd = [...cmd, "delete"];
         }
 
         cmd = [...cmd, "--spec-attr"];
-        if (specAttrName !== "") {
+        if (specAttrName != "") {
             cmd = [...cmd, specAttrName];
-        } else if (action === "add") {
+        } else if (action == "add") {
             cmd = [...cmd, ""];
         } else {
             cmd = [...cmd, "delete"];
         }
 
         cmd = [...cmd, "--state-attr"];
-        if (stateAttrName !== "") {
+        if (stateAttrName != "") {
             cmd = [...cmd, stateAttrName];
-        } else if (action === "add") {
+        } else if (action == "add") {
             cmd = [...cmd, ""];
         } else {
             cmd = [...cmd, "delete"];
         }
 
-        if (action === "add") {
+        if (action == "add") {
             this.setState({
                 addingModal: true,
             });
@@ -500,8 +500,8 @@ class AccountPolicy extends React.Component {
                         `Config entry ${configDN} was successfully ${action}ed`
                     );
                     this.props.pluginListHandler();
-                    this.handleCloseModal();
-                    if (action === "add") {
+                    this.closeModal();
+                    if (action == "add") {
                         this.setState({
                             addingModal: false,
                         });
@@ -518,8 +518,8 @@ class AccountPolicy extends React.Component {
                         `Error during the config entry ${action} operation - ${errMsg.desc}`
                     );
                     this.props.pluginListHandler();
-                    this.handleCloseModal();
-                    if (action === "add") {
+                    this.closeModal();
+                    if (action == "add") {
                         this.setState({
                             addingModal: false,
                         });
@@ -560,7 +560,7 @@ class AccountPolicy extends React.Component {
                     );
                     this.props.pluginListHandler();
                     this.closeConfirmDelete();
-                    this.handleCloseModal();
+                    this.closeModal();
                 })
                 .fail(err => {
                     const errMsg = JSON.parse(err);
@@ -570,15 +570,15 @@ class AccountPolicy extends React.Component {
                     );
                     this.props.pluginListHandler();
                     this.closeConfirmDelete();
-                    this.handleCloseModal();
+                    this.closeModal();
                 });
     }
 
-    handleAddConfig() {
+    addConfig() {
         this.cmdOperation("add");
     }
 
-    handleEditConfig() {
+    editConfig() {
         this.cmdOperation("set");
     }
 
@@ -596,7 +596,7 @@ class AccountPolicy extends React.Component {
         ];
 
         for (const attr of dnAttrs) {
-            if (this.state[attr] !== "" && !valid_dn(this.state[attr])) {
+            if (this.state[attr] != "" && !valid_dn(this.state[attr])) {
                 errObj[attr] = true;
                 all_good = false;
             }
@@ -611,7 +611,7 @@ class AccountPolicy extends React.Component {
                 'checkAllStateAttrs',
             ];
             for (const check_attr of attrs) {
-                if (this.state[check_attr] !== this.state['_' + check_attr]) {
+                if (this.state[check_attr] != this.state['_' + check_attr]) {
                     all_good = true;
                     break;
                 }
@@ -630,14 +630,14 @@ class AccountPolicy extends React.Component {
         const errObj = {};
 
         errObj[attr] = false;
-        if (value !== "") {
+        if (value != "") {
             if (!valid_dn(value)) {
                 errObj[attr] = true;
-            } else if (value !== this.state['_' + attr]) {
+            } else if (value != this.state['_' + attr]) {
                 // New valid value, enable save button
                 saveBtnDisabled = false;
             }
-        } else if (value !== this.state['_' + attr]) {
+        } else if (value != this.state['_' + attr]) {
             // New valid value, enable save button
             saveBtnDisabled = false;
         }
@@ -645,7 +645,7 @@ class AccountPolicy extends React.Component {
         this.setState({
             [attr]: value,
             error: errObj,
-            saveBtnDisabled
+            saveBtnDisabled: saveBtnDisabled
         });
     }
 
@@ -655,7 +655,7 @@ class AccountPolicy extends React.Component {
         }, () => { this.validateConfig() });
     }
 
-    onChange(e) {
+    handleChange(e) {
         // Generic handler for things that don't need validating
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
         this.setState({
@@ -675,7 +675,7 @@ class AccountPolicy extends React.Component {
         }
     }
 
-    handleSaveConfig() {
+    saveConfig() {
         const cmd = [
             "dsconf",
             "-j",
@@ -692,7 +692,7 @@ class AccountPolicy extends React.Component {
         });
 
         log_cmd(
-            "handleSaveConfig",
+            "saveConfig",
             `Save Account Policy Plugin`,
             cmd
         );
@@ -759,13 +759,13 @@ class AccountPolicy extends React.Component {
         let modalButtons = [];
         if (!newEntry) {
             modalButtons = [
-                <Button key="del" variant="primary" onClick={this.handleShowConfirmDelete}>
+                <Button key="del" variant="primary" onClick={this.showConfirmDelete}>
                     Delete Config
                 </Button>,
                 <Button
                     key="save"
                     variant="primary"
-                    onClick={this.handleEditConfig}
+                    onClick={this.editConfig}
                     isDisabled={saveBtnDisabledModal || savingModal}
                     isLoading={savingModal}
                     spinnerAriaValueText={savingModal ? "Saving" : undefined}
@@ -773,7 +773,7 @@ class AccountPolicy extends React.Component {
                 >
                     {savingModal ? "Saving ..." : "Save Config"}
                 </Button>,
-                <Button key="cancel" variant="link" onClick={this.handleCloseModal}>
+                <Button key="cancel" variant="link" onClick={this.closeModal}>
                     Cancel
                 </Button>
             ];
@@ -782,7 +782,7 @@ class AccountPolicy extends React.Component {
                 <Button
                     key="add"
                     variant="primary"
-                    onClick={this.handleAddConfig}
+                    onClick={this.addConfig}
                     isDisabled={saveBtnDisabledModal || addingModal}
                     isLoading={addingModal}
                     spinnerAriaValueText={addingModal ? "Saving" : undefined}
@@ -790,7 +790,7 @@ class AccountPolicy extends React.Component {
                 >
                     {addingModal ? "Adding ..." : "Add Config"}
                 </Button>,
-                <Button key="cancel" variant="link" onClick={this.handleCloseModal}>
+                <Button key="cancel" variant="link" onClick={this.closeModal}>
                     Cancel
                 </Button>
             ];
@@ -803,7 +803,7 @@ class AccountPolicy extends React.Component {
                     title="Manage Account Policy Plugin Shared Config Entry"
                     isOpen={configEntryModalShow}
                     aria-labelledby="ds-modal"
-                    onClose={this.handleCloseModal}
+                    onClose={this.closeModal}
                     actions={modalButtons}
                 >
                     <Form isHorizontal autoComplete="no">
@@ -835,9 +835,9 @@ class AccountPolicy extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeahead}
                                     typeAheadAriaLabel="Type an attribute name"
-                                    onToggle={this.handleRecordLoginToggle}
-                                    onSelect={this.handleRecordLoginSelect}
-                                    onClear={this.handleRecordLoginClear}
+                                    onToggle={this.onRecordLoginToggle}
+                                    onSelect={this.onRecordLoginSelect}
+                                    onClear={this.onRecordLoginClear}
                                     selections={alwaysRecordLoginAttr}
                                     isOpen={this.state.isRecordLoginOpen}
                                     aria-labelledby="typeAhead-record-login"
@@ -871,9 +871,9 @@ class AccountPolicy extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeahead}
                                     typeAheadAriaLabel="Type an attribute name"
-                                    onToggle={this.handleSpecificAttrToggle}
-                                    onSelect={this.handleSpecificAttrSelect}
-                                    onClear={this.handleSpecificAttrClear}
+                                    onToggle={this.onSpecificAttrToggle}
+                                    onSelect={this.onSpecificAttrSelect}
+                                    onClear={this.onSpecificAttrClear}
                                     selections={specAttrName}
                                     isOpen={this.state.isSpecificAttrOpen}
                                     aria-labelledby="typeAhead-specific-attr"
@@ -897,9 +897,9 @@ class AccountPolicy extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeahead}
                                     typeAheadAriaLabel="Type an attribute name"
-                                    onToggle={this.handleLimitAttrToggle}
-                                    onSelect={this.handleLimitAttrSelect}
-                                    onClear={this.handleLimitAttrClear}
+                                    onToggle={this.onLimitAttrToggle}
+                                    onSelect={this.onLimitAttrSelect}
+                                    onClear={this.onLimitAttrClear}
                                     selections={limitAttrName}
                                     isOpen={this.state.isLimitAttrOpen}
                                     aria-labelledby="typeAhead-limit-attr"
@@ -923,9 +923,9 @@ class AccountPolicy extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeahead}
                                     typeAheadAriaLabel="Type an attribute name"
-                                    onToggle={this.handleStateAttrToggle}
-                                    onSelect={this.handleStateAttrSelect}
-                                    onClear={this.handleStateAttrClear}
+                                    onToggle={this.onStateAttrToggle}
+                                    onSelect={this.onStateAttrSelect}
+                                    onClear={this.onStateAttrClear}
                                     selections={stateAttrName}
                                     isOpen={this.state.isStateAttrOpen}
                                     aria-labelledby="typeAhead-state-attr"
@@ -949,9 +949,9 @@ class AccountPolicy extends React.Component {
                                 <Select
                                     variant={SelectVariant.typeahead}
                                     typeAheadAriaLabel="Type an attribute name"
-                                    onToggle={this.handleAlternativeStateToggle}
-                                    onSelect={this.handleAlternativeStateSelect}
-                                    onClear={this.handleAlternativeStateClear}
+                                    onToggle={this.onAlternativeStateToggle}
+                                    onSelect={this.onAlternativeStateSelect}
+                                    onClear={this.onAlternativeStateClear}
                                     selections={altStateAttrName}
                                     isOpen={this.state.isAltStateAttrOpen}
                                     aria-labelledby="typeAhead-alt-state-attr"
@@ -1016,7 +1016,7 @@ class AccountPolicy extends React.Component {
                                     className="ds-left-margin"
                                     key="manage"
                                     variant="primary"
-                                    onClick={this.handleOpenModal}
+                                    onClick={this.openModal}
                                     isDisabled={!this.state.sharedConfigExists && saveBtnDisabled}
                                 >
                                     {this.state.sharedConfigExists ? "Manage Config" : "Create Config"}
@@ -1030,7 +1030,7 @@ class AccountPolicy extends React.Component {
                         isLoading={saving}
                         spinnerAriaValueText={saving ? "Loading" : undefined}
                         variant="primary"
-                        onClick={this.handleSaveConfig}
+                        onClick={this.saveConfig}
                         {...extraPrimaryProps}
                         isDisabled={saveBtnDisabled || saving}
                     >
@@ -1040,7 +1040,7 @@ class AccountPolicy extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmDelete}
                     closeHandler={this.closeConfirmDelete}
-                    handleChange={this.onChange}
+                    handleChange={this.handleChange}
                     actionHandler={this.deleteConfig}
                     spinning={this.state.modalSpinning}
                     item={this.state.configDN}

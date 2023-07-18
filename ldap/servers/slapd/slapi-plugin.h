@@ -34,7 +34,6 @@ extern "C" {
 #include "prprf.h"
 #include "nspr.h"
 #include <syslog.h>
-#include <plhash.h>
 
 #ifdef __GNUC__
     #define __ATTRIBUTE__(x) __attribute__(x)
@@ -3167,30 +3166,13 @@ void slapi_rdn_set_rdn(Slapi_RDN *rdn, const Slapi_RDN *fromrdn);
 void slapi_rdn_free(Slapi_RDN **rdn);
 
 /**
- * Checks if the value of ipAddress is a IPv4 address
- *
- * \param ipAddress is a string
- * \return 1 if address is an IPv4 address
- * \return 0 if address is not an IPv4 address
- */
-int slapi_is_ipv4_addr(const char *ipAddress);
-
-/**
  * Checks if the value of ipAddress is a IPv6 address
  *
- * \param ipAddress is a string
+ * \param ipAddress is a string that is either an IPv4 or IPv6 address
  * \return 1 if address is an IPv6 address
- * \return 0 if address is not an IPv6 address
+ * \return 0 if address is an IPv4 address
  */
 int slapi_is_ipv6_addr(const char *ipAddress);
-
-/**
- * Log to Error log the value of a PRNetAddr - IPv4 or IPv6
- * For debugging purposes only
- *
- * \param addr is a PRNetAddr
- */
-void slapi_log_prnetaddr(const PRNetAddr *addr);
 
 /**
  * Returns the length of a ber-encoded ldap operation
@@ -5258,9 +5240,6 @@ int slapi_filter_get_choice(Slapi_Filter *f);
 int slapi_filter_get_ava(Slapi_Filter *f, char **type, struct berval **bval);
 int slapi_filter_get_attribute_type(Slapi_Filter *f, char **type);
 int slapi_filter_get_subfilt(Slapi_Filter *f, char **type, char **initial, char ***any, char ** final);
-int slapi_filter_replace_ex(Slapi_Filter *f, char *s);
-void slapi_filter_free_bits(Slapi_Filter *f);
-int slapi_filter_replace_strfilter(Slapi_Filter *f, char *strfilter);
 Slapi_Filter *slapi_filter_list_first(Slapi_Filter *f);
 Slapi_Filter *slapi_filter_list_next(Slapi_Filter *f, Slapi_Filter *fprev);
 Slapi_Filter *slapi_str2filter(char *str);
@@ -8461,40 +8440,6 @@ int32_t slapi_search_get_entry(Slapi_PBlock **pb, Slapi_DN *dn, char **attrs, Sl
  * \param pb - slapi_pblock pointer
  */
 void slapi_search_get_entry_done(Slapi_PBlock **pb);
-
-/* Those definitions are used to implement slapi_memberof() */
-typedef enum {
-    MEMBEROF_REUSE_ONLY,
-    MEMBEROF_REUSE_IF_POSSIBLE,
-    MEMBEROF_RECOMPUTE
-} memberof_flag_t;
-
-typedef struct _slapi_memberofresult {
-    Slapi_ValueSet *nsuniqueid_vals;
-    Slapi_ValueSet *dn_vals;
-    PRBool maxgroups_reached; /* flag is true if the number of groups hit the max limit */
-} Slapi_MemberOfResult;
-
-typedef struct _slapi_memberofconfig
-{
-    char **groupattrs;
-    PRBool subtree_search;
-    int allBackends;
-    Slapi_DN **entryScopes;
-    Slapi_DN **entryScopeExcludeSubtrees;
-    PRBool recurse;
-    int maxgroups;
-    memberof_flag_t flag;
-    char *error_msg;
-    int errot_msg_lenght;
-    int entryScopeCount;          /* private to slapi_memberof */
-    int entryExcludeScopeCount;   /* private to slapi_memberof */
-    PRBool maxgroups_reached;     /* private to slapi_memberof */
-    const char *memberof_attr;    /* private to slapi_memberof */
-    Slapi_Attr *dn_syntax_attr;   /* private to slapi_memberof */
-    PLHashTable *ancestors_cache; /* private to slapi_memberof */
-    int current_maxgroup;         /* private to slapi_memberof */
-} Slapi_MemberOfConfig;
 
 #ifdef __cplusplus
 }

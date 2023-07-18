@@ -584,12 +584,6 @@ else
     output2=/dev/null
 fi
 
-# Register CLI tools for bash completion
-for clitool in dsconf dsctl dsidm dscreate ds-replcheck
-do
-  register-python-argcomplete "${clitool}" > "/usr/share/bash-completion/completions/${clitool}"
-done
-
 # reload to pick up any changes to systemd files
 /bin/systemctl daemon-reload >$output 2>&1 || :
 
@@ -789,6 +783,3 @@ fi
 %endif
 
 %changelog
-* Mon Jun 19 2023 User <user@port389.org> - 2.4.1-1
-- Bump version to 2.4.1-1
-

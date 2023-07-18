@@ -7,6 +7,7 @@ import {
     GlueTable,
 } from "./monitorTables.jsx";
 import {
+    TaskLogModal,
     ConflictCompareModal,
 } from "./monitorModals.jsx";
 import {
@@ -32,6 +33,7 @@ export class ReplMonConflict extends React.Component {
             showConfirmDeleteConflict: false,
             showCompareModal: false,
             showConfirmDeleteGlue: false,
+            showConfirmConvertGlue: false,
             showConfirmConvertGlue: false,
             swapConflictRadio: false,
             deleteConflictRadio: false,
@@ -62,9 +64,9 @@ export class ReplMonConflict extends React.Component {
         this.confirmConvertGlue = this.confirmConvertGlue.bind(this);
         this.closeConfirmDeleteGlue = this.closeConfirmDeleteGlue.bind(this);
         this.closeConfirmConvertGlue = this.closeConfirmConvertGlue.bind(this);
-        this.onRadioChange = this.onRadioChange.bind(this);
-        this.onChange = this.onChange.bind(this);
-        this.onConflictConversion = this.onConflictConversion.bind(this);
+        this.handleRadioChange = this.handleRadioChange.bind(this);
+        this.handleChange = this.handleChange.bind(this);
+        this.handleConflictConversion = this.handleConflictConversion.bind(this);
         this.confirmDeleteConflict = this.confirmDeleteConflict.bind(this);
         this.confirmConvertConflict = this.confirmConvertConflict.bind(this);
         this.confirmSwapConflict = this.confirmSwapConflict.bind(this);
@@ -77,7 +79,7 @@ export class ReplMonConflict extends React.Component {
         this.props.enableTree();
     }
 
-    onRadioChange(value, evt) {
+    handleRadioChange(value, evt) {
         // Handle the radio button changes
         const radioID = {
             swapConflictRadio: false,
@@ -93,7 +95,7 @@ export class ReplMonConflict extends React.Component {
         });
     }
 
-    onChange(value, evt) {
+    handleChange(value, evt) {
         // PF 4 version
         if (evt.target.type === 'number') {
             if (value) {
@@ -303,7 +305,7 @@ export class ReplMonConflict extends React.Component {
         });
     }
 
-    onConflictConversion (dn) {
+    handleConflictConversion (dn) {
         // Follow the radio button and perform the conflict resolution
         if (this.state.deleteConflictRadio) {
             this.confirmDeleteConflict(dn);
@@ -315,7 +317,7 @@ export class ReplMonConflict extends React.Component {
     }
 
     confirmConvertConflict (dn) {
-        if (this.state.convertRDN === "") {
+        if (this.state.convertRDN == "") {
             this.props.addNotification(
                 "error",
                 `You must provide a RDN if you want to convert the Conflict Entry`
@@ -384,6 +386,7 @@ export class ReplMonConflict extends React.Component {
         });
     }
 
+
     render () {
         const conflictEntries = this.props.data.conflicts;
         const glueEntries = this.props.data.glues;
@@ -399,7 +402,7 @@ export class ReplMonConflict extends React.Component {
                                 className="ds-left-margin ds-refresh"
                                 icon={faSyncAlt}
                                 title="Refresh replication monitor"
-                                onClick={this.props.handleReload}
+                                onClick={this.props.reload}
                             />
                         </Text>
                     </TextContent>
@@ -463,14 +466,14 @@ export class ReplMonConflict extends React.Component {
                     deleteConflictRadio={this.state.deleteConflictRadio}
                     newRDN={this.state.convertRDN}
                     closeHandler={this.closeCompareModal}
-                    saveHandler={this.onConflictConversion}
-                    handleChange={this.onChange}
-                    handleRadioChange={this.onRadioChange}
+                    saveHandler={this.handleConflictConversion}
+                    handleChange={this.handleChange}
+                    handleRadioChange={this.handleRadioChange}
                 />
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmDeleteGlue}
                     closeHandler={this.closeConfirmDeleteGlue}
-                    handleChange={this.onFieldChange}
+                    handleChange={this.handleFieldChange}
                     actionHandler={this.deleteGlue}
                     spinning={this.state.modalSpinning}
                     item={this.state.glueEntry}
@@ -483,7 +486,7 @@ export class ReplMonConflict extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmConvertGlue}
                     closeHandler={this.closeConfirmConvertGlue}
-                    handleChange={this.onFieldChange}
+                    handleChange={this.handleFieldChange}
                     actionHandler={this.convertGlue}
                     spinning={this.state.modalSpinning}
                     item={this.state.glueEntry}
@@ -496,7 +499,7 @@ export class ReplMonConflict extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmConvertConflict}
                     closeHandler={this.closeConfirmConvertConflict}
-                    handleChange={this.onFieldChange}
+                    handleChange={this.handleFieldChange}
                     actionHandler={this.convertConflict}
                     spinning={this.state.modalSpinning}
                     item={this.state.conflictEntry}
@@ -509,7 +512,7 @@ export class ReplMonConflict extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmSwapConflict}
                     closeHandler={this.closeConfirmSwapConflict}
-                    handleChange={this.onFieldChange}
+                    handleChange={this.handleFieldChange}
                     actionHandler={this.swapConflict}
                     spinning={this.state.modalSpinning}
                     item={this.state.conflictEntry}
@@ -522,7 +525,7 @@ export class ReplMonConflict extends React.Component {
                 <DoubleConfirmModal
                     showModal={this.state.showConfirmDeleteConflict}
                     closeHandler={this.closeConfirmDeleteConflict}
-                    handleChange={this.onFieldChange}
+                    handleChange={this.handleFieldChange}
                     actionHandler={this.deleteConflict}
                     spinning={this.state.modalSpinning}
                     item={this.state.conflictEntry}
@@ -541,6 +544,7 @@ export class ReplMonConflict extends React.Component {
 
 ReplMonConflict.propTypes = {
     data: PropTypes.object,
+    suffix: PropTypes.string,
     serverId: PropTypes.string,
     addNotification: PropTypes.func,
     enableTree: PropTypes.func,
@@ -548,6 +552,7 @@ ReplMonConflict.propTypes = {
 
 ReplMonConflict.defaultProps = {
     data: {},
+    suffix: "",
     serverId: "",
 };
 

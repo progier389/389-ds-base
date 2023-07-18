@@ -52,16 +52,14 @@ class ObjectClassModal extends React.Component {
         } = this.props;
 
         const modalTitle =
-            ocModalViewOnly
-                ? (
-                    `View ObjectClass - ${ocName}`
-                )
-                : (
-                    <div>
-                        {newOcEntry ? "Add" : "Edit"} ObjectClass
-                        {ocName !== "" ? ` - ${ocName}` : ""}{" "}
-                    </div>
-                );
+            ocModalViewOnly ? (
+                `View ObjectClass - ${ocName}`
+            ) : (
+                <div>
+                    {newOcEntry ? "Add" : "Edit"} ObjectClass
+                    {ocName != "" ? ` - ${ocName}` : ""}{" "}
+                </div>
+            );
 
         const btnList = [
             <Button key="cancel" variant="link" onClick={closeModal}>
@@ -344,16 +342,14 @@ class AttributeTypeModal extends React.Component {
             saveBtnDisabled,
         } = this.props;
         const modalTitle =
-            atModalViewOnly
-                ? (
-                    `View Attribute - ${atName}`
-                )
-                : (
-                    <div>
-                        {newAtEntry ? "Add" : "Edit"} Attribute
-                        {atName !== "" ? ` - ${atName}` : ""}{" "}
-                    </div>
-                );
+            atModalViewOnly ? (
+                `View Attribute - ${atName}`
+            ) : (
+                <div>
+                    {newAtEntry ? "Add" : "Edit"} Attribute
+                    {atName != "" ? ` - ${atName}` : ""}{" "}
+                </div>
+            );
 
         const btnList = [
             <Button key="cancel" variant="link" onClick={closeModal}>
