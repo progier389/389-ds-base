@@ -393,4 +393,6 @@ ldbm_ancestorid_read(
     IDList **idl)
 {
     return ldbm_ancestorid_read_ext(be, txn, id, idl, 0);
+/* No idea why we are getting such a warning here. Looks like a false positive */
+#pragma GCC diagnostic ignored "-Wtrict-overflow"
 }

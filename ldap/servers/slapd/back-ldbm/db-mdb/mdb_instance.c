@@ -396,7 +396,7 @@ dbmdb_open_all_files(dbmdb_ctx_t *ctx, backend *be)
         }
     }
     ctxflags = ctx->readonly ? MDB_RDONLY: MDB_CREATE;
-    if (does_vlv_need_init(inst)) {
+    if (be && does_vlv_need_init(inst)) {
         /* Vlv initialization is quite tricky as it require that
          *  [1] dbis_lock is not held
          *  [2] inst->inst_id2entry is set
@@ -490,7 +490,7 @@ error:
     if (rc && errinfo.cmd) {
         slapi_log_err(SLAPI_LOG_ERR, "dbmdb_open_all_files", "%s failed at %s[%d] with rc=%d: %s.\n", errinfo.cmd, errinfo.file, errinfo.line, rc, mdb_strerror(rc));
     }
-    if (rc) {
+    if (valid_slots && rc) {
         /* Roll back invalid slots and rebuild dbis tree */
         tdestroy(ctx->dbis_treeroot, free_dbi_node);
         ctx->dbis_treeroot = NULL;
