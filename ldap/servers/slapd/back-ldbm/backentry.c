@@ -132,3 +132,25 @@ backdn_init(Slapi_DN *sdn, ID id, int to_remove_from_hash)
 
     return (bdn);
 }
+
+void
+backentry_init_weight(BackEntryWeightData *starttime)
+{
+    clock_gettime(CLOCK_MONOTONIC, starttime);
+}
+
+void
+backentry_compute_weight(struct backentry *e, const BackEntryWeightData *starttime)
+{
+    struct timespec now = {0};
+    struct timespec delta = {0};
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    slapi_timespec_diff(&now, (BackEntryWeightData*)starttime, &delta);
+    e->ep_weight = delta.tv_sec * 1000000UL + delta.tv_nsec / 1000UL;
+    if (e->ep_weight == 0) {
+        /* Ensure that entries with very small weight can be distinguished
+         * from those without any weight.
+         */
+        e->ep_weight = 1L;
+    }
+}
