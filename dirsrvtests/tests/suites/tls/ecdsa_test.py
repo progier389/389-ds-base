@@ -262,11 +262,21 @@ def tls_search(inst, ca):
 #
 #  Ideally There should be a dsctl/dsconf subcommand
 #
-def refresh_certs(inst):
+def refresh_certs(inst, timeout=60):
     ld = open_ldapi_conn(inst)
     ld.modify_s('cn=config', [(ldap.MOD_REPLACE, 'nsslapd-refresh-certificates', b'on')])
-    ld.unbind()
-
+    # Now lets wait until the config value is off again
+    for i in range(timeout):
+        result = ld.search_s('cn=config', ldap.SCOPE_BASE, attrlist=['nsslapd-refresh-certificates',])
+        log.info(f'cn=config result: {result}')
+        attrs = result[0][1]
+        vals = attrs['nsslapd-refresh-certificates']
+        if vals[0].decode("utf-8").lower() == "off":
+            ld.unbind()
+            return
+        time.sleep(1)
+    raise TimeoutError(f"Certificate not changed after {timeout} secopnds")
+        
 
 def test_ecdsa(topo):
     """Specify a test case purpose or name here
@@ -316,10 +326,9 @@ def test_refresh_ecdsa(topo):
         7. Install the second set of certificates
         8. Set the certificate refresh attribute to true (using ldapi)
         9. Wait a bit until certificates get replaced
-        10. Perform a search on the open connection
-        11. Open ldaps connection with new server CA certificate and search root entry
-        12. Open ldaps connection with old server CA certificate and search root entry
-        13. Close the open connection
+        10. Open ldaps connection with new server CA certificate and search root entry
+        11. Perform a search on the open connection
+        12. Close the open connection
     :expectedresults:
         1. No error
         2. No error
@@ -332,8 +341,7 @@ def test_refresh_ecdsa(topo):
         9. No error
         10. No error
         11. No error
-        12. LDAP_SERVER_DOWN because certificate could not be verified
-        13. No error
+        12. No error
     """
 
     inst=topo.standalone
@@ -352,10 +360,6 @@ def test_refresh_ecdsa(topo):
         cert2 = ECDSA_Certificate("Cert2", dir)
         cert2.generate_cert(ca2)
 
-        install_certs(ca2, cert2, inst)
-        inst.restart(post_open=False)
-        tls_search(inst, ca2)
-
         install_certs(ca, cert, inst)
         inst.restart(post_open=False)
         tls_search(inst, ca)
@@ -363,10 +367,13 @@ def test_refresh_ecdsa(topo):
 
         install_certs(ca2, cert2, inst)
         refresh_certs(inst)
-        time.sleep(1)
+
+        # if we restart the next tls_search is OK and ld.search_s fails as expected
+        # if we dont the tls_search fails ==> something is down
+        # inst.restart(post_open=False)  
+        tls_search(inst, ca2)
         results = ld.search_s('', ldap.SCOPE_BASE)
         assert len(results) == 1
-        tls_search(inst, ca2)
         ld.unbind()
 
 

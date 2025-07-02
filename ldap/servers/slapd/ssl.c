@@ -3054,10 +3054,23 @@ slapi_set_cacertfile(char *certfile)
 void
 refresh_certs(daemon_ports_t *ports)
 {
+    slapdFrontendConfig_t *slapdFrontendConfig = getFrontendConfig();
     PRFileDesc **sock = NULL;
 
     slapi_log_err(SLAPI_LOG_WARNING, "Security certificates refresh",
                   "Refresh in propgress.\n");
+
+    /* In error case, there are no good choices:
+     *   Going on using the old certificates may be a security risk.
+     *   Stopping the instance and risking a Deny of Service is also bad
+     *   but arguably safer, so it is the chosen solution
+     */
+    _nss_initialized = 0;
+    if (slapd_nss_init(1, 1) /* have config? */) {
+        slapi_log_err(SLAPI_LOG_CRIT, "Security certificates refresh",
+            "Failed to reinitialize nss. Stopping the server.");
+    }
+
     _security_library_initialized = 0;
     slapd_ssl_init();
     if (_security_library_initialized == 0) {
@@ -3067,15 +3080,13 @@ refresh_certs(daemon_ports_t *ports)
 
     for (sock = ports->s_socket; sock && *sock; sock++) {
         if (slapd_ssl_init2(sock, 0)) {
-            /* In error case, there are no good choices:
-             *   Going on using the old certificates may be a security risk.
-             *   Stopping the instance and risking a Deny of Service is also bad
-             *   but arguably safer, so it is the chosen solution
-             */
             slapi_log_err(SLAPI_LOG_CRIT, "Security certificates refresh",
                 "Failed to update the new certificates. Stopping the server.");
         }
     }
+    CFG_LOCK_WRITE(slapdFrontendConfig);
+    slapdFrontendConfig->ssl_refresh_certs = LDAP_OFF;
+    CFG_UNLOCK_WRITE(slapdFrontendConfig);
     slapi_log_err(SLAPI_LOG_WARNING, "Security certificates refresh",
                   "Refresh completed propgress.\n");
 }
