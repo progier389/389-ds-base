@@ -23,6 +23,8 @@
 #include "secmod.h"
 #include <string.h>
 #include <errno.h>
+#include <private/pprio.h>
+
 
 #define NEED_TOK_PBE /* defines tokPBE and ptokPBE - see slap.h */
 #include "slap.h"
@@ -1607,6 +1609,7 @@ slapd_ssl_init2(PRFileDesc **fd, int startTLS)
     }
 
     (*fd) = pr_sock;
+    dyncerts_register_socket(PR_FileDesc2NativeHandle(sock), pr_sock);
 
     /* Step / Three.6 /
      *  - If in FIPS mode, authenticate to the token before
