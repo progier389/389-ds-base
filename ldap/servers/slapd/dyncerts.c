@@ -20,98 +20,26 @@
 #include <nss.h>
 #include <nss3/pk11pub.h>
 #include <nss3/certdb.h>
+#include "svrcore.h"
+#include "dyncerts.h"
 
-#define DYNCERTS_BENAME "DYNCERTS"
-#define DYNCERTS_BETYPE "DSE"
-
-#define CONFIG_DN1 "cn=config"
-#define CONFIG_DN2 "cn=encryption,cn=config"
-#define CONFIG_DN2_FILTER "(&(objectclass=nsEncryptionModule)(nsSSLActivation=on))"
-
-/* Indexes in config search set */
-#define CONFIG_ENTRY_IDX 	            0
-#define ENCRYPTION_CONFIG_ENTRY_IDX 	1
-#define FIRST_FAMILY_CONFIG_ENTRY_IDX 	2
-
-
-#define DYNCERTS_DEFAULT_ACI "(target =\"ldap:///" DYNCERTS_SUFFIX "*\")(versio" \
-                             "n 3.0; acl \"dynamic certificates\"; deny( all ) " \
-                             "userdn = \"ldap:///anyone\";)"
-
-
-/* Conditionnaly add an attribute value */
-#define COND_STR(e, a, v, c) do { if (c) { slapi_entry_add_string((e), (a), (v)); } } while (false)
-
-/* Dynamic certificate attribute name prefix */
-#define APX "nsDynamicCertificate"
+#ifdef DEBUG
+#define SLAPI_LOG_DYC SLAPI_LOG_INFO
+#else
+#define SLAPI_LOG_DYC SLAPI_LOG_TRACE
+#endif
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static struct slapdplugin dyncerts_plugin = {0};
-
-struct sock_elem {
-    struct sock_elem *next;
-    int sock;
-    PRFileDesc *pr_sock;
-};
-
-/*
- * Subject Alternate Name decoding structs
- */
-typedef enum general_name_type {
-    gnt_othername, gnt_rfc822name, gnt_dnsname, gnt_x400address, gnt_dirname,
-    gnt_edipartyname, gnt_uri, gnt_ipaddress, gnt_registeredid,
-} general_name_type_t;
-
-typedef struct {
-    BerValue vals[2];
-    int nbvals;
-} general_name_value_t;
-
-struct altname_ctx {
-    const char *attrname;
-    Slapi_Entry *e;
-};
-
-typedef void (*gnw_cb_t)(general_name_type_t gnt, const general_name_value_t *val, void *arg);
-
-/*
- * Search set struct is used to store a list of entries
- * The different search set are:
- * The whole backend search set
- *      containing the backend container and the certificates entries
- *      It has a NULL pdscc
- * The search search set containing the entrties that matches the search request
- *      The entries are links to the backend entries (so they should not be freed)
- *      Its pdscc point to the backend search set
- * The config search set containing cn=config and nsEncryptionModule entries
- */
-typedef struct dyncerts_search_set {
-    size_t max_entries;
-    size_t nb_entries;
-    Slapi_Entry **entries;
-    size_t cur_entry;
-    struct dyncerts_search_set *pdscc;
-} DCSS;
-
-/* The backend private data */
-static struct dyncerts {
-    Slapi_Backend *be;
-    DCSS *config;
-    struct sock_elem *sockets;  /* Secure sockets (needed to get the pin) */
-} pdyncerts;
+static struct dyncerts pdyncerts;
 
 static const char *dyncerts_baseentry_str =
-    "dn:" DYNCERTS_SUFFIX "\n"
-    "objectclass:top\n"
-    "objectclass:nsContainer\n"
-    "cn:certificates\n";
+    "dn: " DYNCERTS_SUFFIX "\n"
+    "objectclass: top\n"
+    "objectclass: nsContainer\n"
+    "cn: " DYNCERTS_CN "\n";
 
-static const struct {
-    unsigned int flags;
-    unsigned int mask;
-    char c;
-} trust_flags[] = {
+static const struct trust_flags_mask trust_flags[] = {
     { CERTDB_VALID_CA, CERTDB_TRUSTED_CA|CERTDB_TRUSTED_CLIENT_CA, 'c' },
     { CERTDB_TERMINAL_RECORD, CERTDB_TRUSTED, 'p' },
     { CERTDB_TRUSTED_CA, 0, 'C' },
@@ -124,7 +52,9 @@ static const struct {
     { 0 }
 };
 
+/* Some forward definitions */
 static DCSS *get_entry_list(const Slapi_DN *basesn, int scope, char **attrs);
+int dyncerts_apply_cb(const char *nickname, dyc_action_cb_t cb, void *arg, char *errmsg);
 
 /* Alloc a search set */
 static DCSS *
@@ -169,7 +99,7 @@ ss_add_entry(DCSS *ss, Slapi_Entry *e)
 static int
 be_unwillingtoperform(Slapi_PBlock *pb)
 {
-    send_ldap_result(pb, LDAP_UNWILLING_TO_PERFORM, NULL, "Operation on Dynamic Certificate Entry not allowed", 0, NULL);
+    send_ldap_result(pb, LDAP_UNWILLING_TO_PERFORM, NULL, "Operation not allowed on Dynamic Certificate Entry", 0, NULL);
     return -1;
 }
 
@@ -231,11 +161,16 @@ dyncerts_search_set_release(void **pss)
 static Slapi_Entry *
 dyncerts_find_entry(const Slapi_DN *basedn, int scope, char **attrs, DCSS **be_ss)
 {
+    Slapi_DN suffix = {0};
     Slapi_Entry *e = NULL;
     DCSS *ss = NULL;
 
+    slapi_sdn_init_dn_byref(&suffix, DYNCERTS_SUFFIX);
     read_config_info();
-    ss =  get_entry_list(basedn, scope, attrs);
+    if (slapi_sdn_compare(basedn, &suffix) != 0) {
+        scope = LDAP_SCOPE_SUBTREE;
+    }
+    ss =  get_entry_list(&suffix, scope, attrs);
     for(size_t idx = 0; idx<ss->nb_entries; idx++) {
         e = ss->entries[idx];
         if (slapi_sdn_compare(basedn, slapi_entry_get_sdn_const(e)) == 0) {
@@ -295,7 +230,7 @@ dyncerts_search(Slapi_PBlock *pb)
             scope = LDAP_SCOPE_BASE;
         } else {
              /*
-              * Bypass internal operations targetting all backends. 
+              * Bypass internal operations targetting all backends.
               *  Like the roles & cos discovery
               */
             slapi_pblock_set(pb, SLAPI_SEARCH_RESULT_SET, ss);
@@ -377,13 +312,6 @@ dyncerts_prev_search_results(void *vp)
     }
 }
 
-/* Backend callback (add operation) */
-int
-dyncerts_add(Slapi_PBlock *pb)
-{
-    return 0;
-}
-
 /* Backend callback (release private data context) */
 int
 dyncerts_cleanup(Slapi_PBlock *pb)
@@ -398,6 +326,7 @@ dyncerts_cleanup(Slapi_PBlock *pb)
             slapi_ch_free((void **)&pdata->sockets);
             pdata->sockets = se;
         }
+        memset(pdata, 0, sizeof *pdata);
         pdata = NULL;
     }
     slapi_pblock_set(pb, SLAPI_PLUGIN_PRIVATE, pdata);
@@ -476,18 +405,23 @@ static PRBool
 has_privkey(CERTCertificate *cert)
 {
     SECKEYPrivateKey *privkey = PK11_FindKeyByDERCert(cert->slot, cert, NULL);
-    return privkey ? PR_TRUE : PR_FALSE;
+    PRBool res = privkey ? PR_TRUE : PR_FALSE;
+    SECKEY_DestroyPrivateKey(privkey);
+    return res;
 }
 
 /* Determine the key algorythm */
 static char *
 key_algo(CERTCertificate *cert)
 {
-    SECKEYPublicKey *pubkey = CERT_ExtractPublicKey(cert);
+    SECKEYPublicKey *pubkey = CERT_ExtractPublicKey(cert);\
+    CK_KEY_TYPE keyType = 0;
     if (pubkey == NULL) {
         return "None";
     }
-			switch (pubkey->keyType) {
+    keyType = pubkey->keyType;
+    SECKEY_DestroyPublicKey(pubkey);
+	switch (keyType) {
         case rsaKey: return "RSA";
         case ecKey: return "EC";
         default: return "UNKNOWN";
@@ -532,6 +466,9 @@ is_servercert(CERTCertificate *cert)
     for (size_t i=FIRST_FAMILY_CONFIG_ENTRY_IDX; (e=get_config_entry(i)); i++) {
         const char *ename = slapi_entry_attr_get_ref(e, "nsSSLPersonalitySSL");
         const char *eslot = slapi_entry_attr_get_ref(e, "nsSSLToken");
+        if (!ename || !eslot) {
+            continue;
+        }
         if (strcasecmp(ename, certname) != 0) {
             continue;
         }
@@ -545,14 +482,31 @@ is_servercert(CERTCertificate *cert)
     return PR_FALSE;
 }
 
+static const char *
+cert_token(CERTCertificate *cert)
+{
+    return PK11_GetTokenName(cert->slot);
+}
+
 /* Get certificate db pin */
 static inline void * __attribute__((always_inline))
-_get_pw()
+_get_pw(const char *token)
 {
     struct sock_elem *se = pdyncerts.sockets;
     char *pw = NULL;
-    for (;pw == NULL && se; se=se->next) {
-        pw = SSL_RevealPinArg(se->pr_sock);
+#ifdef WITH_SYSTEMD
+    SVRCOREStdSystemdPinObj *StdPinObj = (SVRCOREStdSystemdPinObj *)SVRCORE_GetRegisteredPinObj();
+#else
+    SVRCOREStdPinObj *StdPinObj = (SVRCOREStdPinObj *)SVRCORE_GetRegisteredPinObj();
+#endif
+    SVRCOREError err = SVRCORE_StdPinGetPin(&pw, StdPinObj, token);
+
+    if (err != SVRCORE_Success || pw == NULL) {
+        pthread_mutex_lock(&mutex);
+        for (;pw == NULL && se; se=se->next) {
+            pw = SSL_RevealPinArg(se->pr_sock);
+        }
+        pthread_mutex_unlock(&mutex);
     }
     return pw;
 }
@@ -565,14 +519,16 @@ verify_cert(Slapi_Entry *e, CERTCertificate *cert, const char *attrname)
     SECCertificateUsage usage = 0;
     char *val = NULL;
 
-    if (strcmp(slapi_entry_attr_get_ref(e, APX "IsServerCert"), "TRUE") == 0) {
+    if (strcmp(slapi_entry_attr_get_ref(e, DYCATTR_ISSRVCERT), "TRUE") == 0) {
         usage = certificateUsageSSLServer;
-    } else if (strcmp(slapi_entry_attr_get_ref(e, APX "IsCA"), "TRUE") == 0) {
+    } else if (strcmp(slapi_entry_attr_get_ref(e, DYCATTR_ISCA), "TRUE") == 0) {
         usage = certificateUsageAnyCA;
+    } else {
+        usage = certificateUsageSSLClient;
     }
 
     int rv = CERT_VerifyCertificateNow(cert->dbhandle, cert, PR_TRUE,
-                                       usage, _get_pw(), &returnedUsages);
+                                       usage, _get_pw(cert_token(cert)), &returnedUsages);
 
     if (rv != SECSuccess) {
         int errorCode = PR_GetError();
@@ -588,7 +544,7 @@ verify_cert(Slapi_Entry *e, CERTCertificate *cert, const char *attrname)
 /*
  * A callback for the Subject Alternate Name supported encoding table. Used for:
  *   - OtherName:
- *     EDIPartyName ::= SEQUENCE { nameAssigner [0] OPTIONAL, partyName [1] } 
+ *     EDIPartyName ::= SEQUENCE { nameAssigner [0] OPTIONAL, partyName [1] }
  *   or
  *   - EDIPartyName with optional nameAssigner
  *     OtherName ::= SEQUENCE { type-id OID, value [0] EXPLICIT ANY }
@@ -715,7 +671,7 @@ gnw_cb(general_name_type_t gnt, const general_name_value_t *val, void *arg)
                 /* Should convert the address to string */
             } else {
                 size_t len = val->vals[0].bv_len;
-                str = malloc(len+1);
+                str = slapi_ch_malloc(len+1);
                 memcpy(str, val->vals[0].bv_val, len);
                 str[len] = 0;
             }
@@ -724,7 +680,7 @@ gnw_cb(general_name_type_t gnt, const general_name_value_t *val, void *arg)
             {
                 size_t len0 = val->vals[0].bv_len;
                 size_t len1 = val->vals[1].bv_len;
-                str = malloc(len0+len1+2);
+                str = slapi_ch_malloc(len0+len1+2);
                 memcpy(str, val->vals[0].bv_val, len0);
                 str[len0] = '=';
                 memcpy(str+len0+1, val->vals[1].bv_val, len1);
@@ -751,54 +707,735 @@ store_alt_name(Slapi_Entry *e, CERTCertificate *cert, const char *attrname)
         bv.bv_val = (char*) si.data;
         walk_subject_alt_names(&bv, gnw_cb, &ctx);
     }
+    SECITEM_FreeItem(&si, PR_FALSE);
+}
+
+/* Get certificate nickname (including token name). Must be freed by caller */
+static char *
+get_cert_nickname(CERTCertificate *cert)
+{
+    char *token = PK11_GetTokenName(cert->slot);
+    if (is_internal_slot(token)) {
+        return slapi_ch_strdup(cert->nickname);
+    }
+    return slapi_ch_smprintf("%s:%s", token, cert->nickname);
 }
 
 /* Generate the certificate entry */
 static Slapi_Entry *
 dyncerts_cert2entry(CERTCertificate *cert)
 {
-    char *dn = slapi_ch_smprintf("cn=%s,%s", cert->nickname, DYNCERTS_SUFFIX);
+    char *nickname = get_cert_nickname(cert);
+    char *dn = slapi_ch_smprintf("cn=%s,%s", nickname, DYNCERTS_SUFFIX);
     Slapi_Entry *e = slapi_entry_alloc();
     char tmpbuff[32] = "";
     PRTime notBefore = 0;
     PRTime notAfter = 0;
     Slapi_Value tmpv = {0};
     char *tmpstr = NULL;
-    
+
     slapi_entry_init(e, dn, NULL);
     slapi_entry_add_string(e, "objectclass", "top");
     slapi_entry_add_string(e, "objectclass", "extensibleobject");
-    slapi_entry_add_string(e, "cn", cert->nickname);
-    slapi_entry_add_string(e, APX "Subject", cert->subjectName);
-    slapi_entry_add_string(e, APX "Issuer", cert->issuerName);
-    slapi_entry_add_string(e, APX "IsCA", boolv(CERT_IsCACert(cert, NULL)));
-    slapi_entry_add_string(e, APX "IsRootCA", boolv(cert->isRoot));
-    slapi_entry_add_string(e, APX "HasPrivateKey", boolv(has_privkey(cert)));
-    slapi_entry_add_string(e, APX "IsServerCert", boolv(is_servercert(cert)));
-    slapi_entry_add_string(e, APX "KeyAlgorithm", key_algo(cert));
+    slapi_entry_add_string(e, DYCATTR_NICKNAME, nickname);
+    slapi_entry_add_string(e, DYCATTR_SUBJECT, cert->subjectName);
+    slapi_entry_add_string(e, DYCATTR_ISSUER, cert->issuerName);
+    slapi_entry_add_string(e, DYCATTR_ISCA, boolv(CERT_IsCACert(cert, NULL)));
+    slapi_entry_add_string(e, DYCATTR_ISROOTCA, boolv(cert->isRoot));
+    slapi_entry_add_string(e, DYCATTR_HASPKEY, boolv(has_privkey(cert)));
+    slapi_entry_add_string(e, DYCATTR_ISSRVCERT, boolv(is_servercert(cert)));
+    slapi_entry_add_string(e, DYCATTR_KALGO, key_algo(cert));
     CERT_GetCertTimes(cert, &notBefore, &notAfter);
     timev(notBefore, tmpbuff, sizeof tmpbuff);
-    slapi_entry_add_string(e, APX "NotBefore", tmpbuff);
+    slapi_entry_add_string(e, DYCATTR_NBEFORE, tmpbuff);
     timev(notAfter, tmpbuff, sizeof tmpbuff);
-    slapi_entry_add_string(e, APX "NotAfter", tmpbuff);
+    slapi_entry_add_string(e, DYCATTR_NAFTER, tmpbuff);
     trustv(cert, tmpbuff, sizeof tmpbuff);
-    slapi_entry_add_string(e, APX "TrustFlags", tmpbuff);
-    COND_STR(e, APX "Type", "SSL CLIENT", cert->nsCertType & NS_CERT_TYPE_SSL_CLIENT);
-    COND_STR(e, APX "Type", "SSL SERVER", cert->nsCertType & NS_CERT_TYPE_SSL_SERVER);
-    COND_STR(e, APX "Type", "EMAIL", cert->nsCertType & NS_CERT_TYPE_EMAIL);
-    COND_STR(e, APX "Type", "OBJECT SIGNING", cert->nsCertType & NS_CERT_TYPE_OBJECT_SIGNING);
-    COND_STR(e, APX "Type", "SSL CA", cert->nsCertType & NS_CERT_TYPE_SSL_CA);
-    COND_STR(e, APX "Type", "EMAIL CA", cert->nsCertType & NS_CERT_TYPE_EMAIL_CA);
-    COND_STR(e, APX "Type", "OBJECT SIGNING CA", cert->nsCertType & NS_CERT_TYPE_OBJECT_SIGNING_CA);
-    slapi_entry_add_string(e, APX "TokenName", PK11_GetTokenName(cert->slot));
+    slapi_entry_add_string(e, DYCATTR_TRUST, tmpbuff);
+    COND_STR(e, DYCATTR_TYPE, "SSL CLIENT", cert->nsCertType & NS_CERT_TYPE_SSL_CLIENT);
+    COND_STR(e, DYCATTR_TYPE, "SSL SERVER", cert->nsCertType & NS_CERT_TYPE_SSL_SERVER);
+    COND_STR(e, DYCATTR_TYPE, "EMAIL", cert->nsCertType & NS_CERT_TYPE_EMAIL);
+    COND_STR(e, DYCATTR_TYPE, "OBJECT SIGNING", cert->nsCertType & NS_CERT_TYPE_OBJECT_SIGNING);
+    COND_STR(e, DYCATTR_TYPE, "SSL CA", cert->nsCertType & NS_CERT_TYPE_SSL_CA);
+    COND_STR(e, DYCATTR_TYPE, "EMAIL CA", cert->nsCertType & NS_CERT_TYPE_EMAIL_CA);
+    COND_STR(e, DYCATTR_TYPE, "OBJECT SIGNING CA", cert->nsCertType & NS_CERT_TYPE_OBJECT_SIGNING_CA);
+    slapi_entry_add_string(e, DYCATTR_TOKEN, PK11_GetTokenName(cert->slot));
     secitemv(&cert->derCert, &tmpv);
-    slapi_entry_add_value(e, APX "Der", &tmpv);
+    slapi_entry_add_value(e, DYCATTR_CERTDER, &tmpv);
     tmpstr = secitem2hex(&cert->serialNumber);
-    slapi_entry_add_string(e, APX "SerialNumber", tmpstr);
+    slapi_entry_add_string(e, DYCATTR_SN, tmpstr);
     slapi_ch_free_string(&tmpstr);
-    verify_cert(e, cert, APX "VerificationStatus");
-    store_alt_name(e, cert, APX "SubjectAltName");
+    verify_cert(e, cert, DYCATTR_VERIF);
+    store_alt_name(e, cert, DYCATTR_ALTNAME);
+    slapi_ch_free_string(&nickname);
     return e;
+}
+
+/* Free data within CertCtx_t */
+void
+dyncerts_cert_ctx_done(CertCtx_t *ctx)
+{
+    if (ctx->dercert.data) {
+         slapi_ch_free((void**)&ctx->dercert.data);
+         ctx->dercert.data = NULL;
+    }
+    if (ctx->derpkey.data) {
+        slapi_ch_free((void**)&ctx->derpkey.data);
+        ctx->derpkey.data = NULL;
+    }
+    slapi_ch_free_string(&ctx->fullnickname);
+    slapi_ch_free_string(&ctx->nickname);
+    slapi_ch_free_string(&ctx->token);
+    slapi_ch_free_string(&ctx->trust);
+    ctx->force = false;
+    if (ctx->slot) {
+        PK11_FreeSlot(ctx->slot);
+        ctx->slot = NULL;
+    }
+    if (ctx->cert) {
+        CERT_DestroyCertificate(ctx->cert);
+        ctx->cert = NULL;
+    }
+    if (ctx->privkey) {
+        if (ctx->ldaprc) {
+            PK11_DeleteTokenPrivateKey(ctx->privkey, PR_FALSE);
+        } else {
+            SECKEY_DestroyPrivateKey(ctx->privkey);
+        }
+        ctx->privkey = NULL;
+    }
+    ctx->ldaprc = 0;
+}
+
+/* Split nicklname into nickname + tokenname */
+int
+dyncert_resolve_token(CertCtx_t *ctx)
+{
+    char *del = NULL;
+    if (ctx->fullnickname) {
+        return 0;
+    }
+    ctx->fullnickname = slapi_ch_strdup(ctx->nickname);
+    if (ctx->nickname == 0) {
+        ERRMSG(ctx, LDAP_OBJECT_CLASS_VIOLATION, "%s attribute is missing.", DYCATTR_NICKNAME);
+    }
+    ctx->internal_token = true;
+    del = strchr(ctx->nickname, ':');
+    if (del) {
+        size_t len = del - ctx->nickname;
+        if (strchr(del+1, ':')) {
+            ERRMSG(ctx, LDAP_UNWILLING_TO_PERFORM, "%s attribute should not contain any : except for the token name.", DYCATTR_NICKNAME);
+        }
+        ctx->token = ctx->nickname;
+        ctx->token[len] = 0;
+        ctx->nickname = slapi_ch_strdup(del+1);
+        ctx->internal_token = is_internal_slot(ctx->token);
+    }
+    if (ctx->internal_token) {
+        slapi_ch_free_string(&ctx->token);
+        ctx->slot = slapd_pk11_getInternalKeySlot();
+        ctx->token = slapi_ch_strdup(PK11_GetTokenName(ctx->slot));
+    } else {
+        ctx->slot = PK11_FindSlotByName(ctx->token);
+        if (!ctx->slot) {
+            ERRMSG(ctx, LDAP_UNWILLING_TO_PERFORM, "Cannot find token %s", ctx->token);
+        }
+    }
+
+    return 0;
+}
+
+/*
+ * Add a certificate and optionnaly its private key in NSS db
+ *
+ * CertCtx_t input:
+ *    - nickname
+ *    - dercert
+ *    - derpkey (optionnal)
+ *    - trust (optionnal)
+ *    - force (ignore verification failure)
+ *    - errmsg
+ * CertCtx_t output:
+ *    - primary (Is the primary server certificate)
+ *    - trust
+ *    - cert
+ *    - ldaprc
+ *    - errmsg
+ */
+static SECStatus
+nss_add_cert_and_key(CertCtx_t *ctx, bool verifyOnly)
+{
+#define CHECK_ERR(msg)    if (rv != SECSuccess) { errmsg = msg; goto done; }
+    SECStatus rv = SECFailure;
+    CERTCertificate *cert = ctx->cert;
+    SECKEYPrivateKey *privkey = NULL;
+    SECKEYPublicKey *pubkey = NULL;
+    SECCertificateUsage returnedUsages = 0;
+    SECCertificateUsage usage = 0;
+    CERTCertTrust trust = {0};
+    const char *errmsg = NULL;
+
+    if (PK11_NeedLogin(ctx->slot)) {
+        rv = PK11_Authenticate(ctx->slot, PR_TRUE, _get_pw(ctx->token));
+        CHECK_ERR("Failed to authenticate to token")
+    }
+    cert = CERT_DecodeCertFromPackage((char *)ctx->dercert.data, ctx->dercert.len);
+    ctx->cert = cert;
+    if (cert == NULL) {
+        errmsg = "Failed to decode certificate";
+        goto done;
+    }
+    ctx->primary = is_servercert(ctx->cert);
+    if (!ctx->trust) {
+        ctx->trust = ",,";
+        if (cert->nsCertType & NS_CERT_TYPE_SSL_CA) {
+            if (ctx->primary) {
+                ctx->trust = "CTu,u,u";
+            } else {
+                ctx->trust = "CT,,";
+            }
+        } else if (ctx->cert->nsCertType & (NS_CERT_TYPE_SSL_CLIENT|NS_CERT_TYPE_SSL_SERVER)) {
+            ctx->trust = "u,u,u";
+        }
+        ctx->trust = slapi_ch_strdup(ctx->trust);
+    }
+    rv = CERT_DecodeTrustString(&trust, ctx->trust);
+    CHECK_ERR("Failed to decode the trust string");
+    if (ctx->derpkey.data) {
+        /* Import the private key (PKCS#8 format) */
+        rv = PK11_ImportDERPrivateKeyInfoAndReturnKey(
+            ctx->slot,
+            &ctx->derpkey,
+            NULL,              /* nickname */
+            NULL,              /* publicValue */
+            PR_TRUE,           /* isPerm */
+            PR_TRUE,           /* isPrivate */
+            KU_ALL,            /* key usage */
+            &privkey,
+            NULL               /* wincx */
+        );
+        CHECK_ERR("Failed to import private key")
+    }
+    pubkey = CERT_ExtractPublicKey(cert);
+    if (!pubkey) {
+        rv = SECFailure;
+        CHECK_ERR("Failed to extract public key from certificate");
+            
+    }
+    if (cert->nsCertType & NS_CERT_TYPE_SSL_CA) {
+        usage = certificateUsageAnyCA;
+    } else {
+        usage = certificateUsageSSLServer;
+    }
+    rv = CERT_VerifyCertificateNow(cert->dbhandle, cert, PR_TRUE,
+                                   usage, _get_pw(ctx->token), &returnedUsages);
+    if (!ctx->force) {
+        CHECK_ERR("Failed to extract public key from certificate");
+    }
+    rv = SECSuccess;
+    if (!verifyOnly) {
+        rv = PK11_ImportCert(ctx->slot, cert, CK_INVALID_HANDLE, ctx->nickname, PR_FALSE);
+        CHECK_ERR("Failed to import certificate");
+        rv = CERT_ChangeCertTrust(CERT_GetDefaultCertDB(), cert, &trust);
+        CHECK_ERR("Failed to set certificate trust")
+    }
+    rv = SECSuccess;
+done:
+    ctx->privkey = privkey;
+    if (rv) {
+        rv = PR_GetError();
+        ctx->ldaprc = LDAP_UNWILLING_TO_PERFORM;
+        if (ctx->errmsg) {
+            PR_snprintf((ctx)->errmsg, SLAPI_DSE_RETURNTEXT_SIZE, "%s: %d - %s",
+                        errmsg, rv, slapd_pr_strerror(rv));
+        }
+    }
+    if (pubkey) {
+        SECKEY_DestroyPublicKey(pubkey);
+    }
+    return rv;
+}
+
+/* Import the certificate and the key */
+int
+dyncerts_import_cert_and_key(CertCtx_t *ctx, bool verifyOnly)
+{
+    Slapi_Entry *e = NULL;
+    SECStatus rv = 0;
+    DCSS *ss = NULL;
+
+    if (dyncert_resolve_token(ctx)) {
+        return ctx->ldaprc;
+    }
+    if (ctx->dercert.data == 0) {
+        ERRMSG(ctx, LDAP_OBJECT_CLASS_VIOLATION, "%s attribute is missing.", DYCATTR_CERTDER);
+    }
+    if (!ctx->slot) {
+        slapi_log_err(SLAPI_LOG_ERR, "dyncerts_decode_cert", "Failed to get NSS internal key slot.\n");
+        ERRMSG(ctx, LDAP_UNWILLING_TO_PERFORM, "Failed to get NSS internal key slot.");
+    }
+    rv = nss_add_cert_and_key(ctx, verifyOnly);
+    if (rv != SECSuccess) {
+        return ctx->ldaprc;
+    }
+    if (verifyOnly) {
+        return 0;
+    }
+    e = dyncerts_find_entry(ctx->sdn, LDAP_SCOPE_BASE, NULL, &ss);
+    ss_destroy(&ss);
+    if (!e) {
+        slapi_log_err(SLAPI_LOG_ERR, "dyncerts_add",
+                      "Failed to add certificate %s (entry not found after import).\n",
+                      ctx->fullnickname);
+        ERRMSG(ctx, LDAP_UNWILLING_TO_PERFORM,
+               "Failed to add certificate %s (entry not found after import).\n",
+               ctx->fullnickname);
+    }
+    if (ctx->primary) {
+        /* Should trigger certificate switch here */
+    }
+
+    return 0;
+}
+
+/* Tell if dn is the container entry */
+static bool
+dyncert_is_suffix(Slapi_DN *sdn)
+{
+    Slapi_DN suffix = {0};
+    slapi_sdn_init_dn_byref(&suffix, DYNCERTS_SUFFIX);
+    return slapi_sdn_compare(sdn, &suffix) == 0;
+}
+
+/* Extract the certificate nickname from the dn */
+static const char *
+dyncert_nickname_from_dn(Slapi_DN *sdn)
+{
+    Slapi_DN parent = {0};
+    Slapi_RDN rdn = {0};
+    const char *pt = NULL;
+
+    slapi_sdn_init(&parent);
+    slapi_sdn_get_parent(sdn, &parent);
+    slapi_sdn_get_rdn(sdn, &rdn);
+    pt = slapi_rdn_get_rdn(&rdn);
+    if (dyncert_is_suffix(&parent) &&
+        !slapi_rdn_is_multivalued(&rdn) &&
+        strncasecmp(pt, "cn=", 3) == 0) {
+        return pt+3;
+    }
+    return NULL;
+}
+
+static SECItem
+slapi_entry_attr_get_secitem(const Slapi_Entry *e, const char *type)
+{
+    const struct berval *bv = NULL;
+    Slapi_Attr *attr = NULL;
+    Slapi_Value *v = NULL;
+    SECItem si = {0};
+
+    if (slapi_entry_attr_find(e, type, &attr) == 0) {
+        slapi_attr_first_value(attr, &v);
+        bv = slapi_value_get_berval(v);
+        si.data = (unsigned char *) slapi_ch_malloc(bv->bv_len);
+        memcpy(si.data, bv->bv_val, bv->bv_len);
+        si.len = bv->bv_len;
+    }
+    return si;
+}
+
+int
+dyncerts_check_entry(Slapi_PBlock *pb, Slapi_Entry *e, char *errmsg, bool needcert)
+{
+    Slapi_DN *sdn = (Slapi_DN *)slapi_entry_get_sdn_const(e);
+    int rc = LDAP_SUCCESS;
+    Slapi_Attr *a = NULL;
+    char *allowedattrs[] = {
+        DYCATTR_NICKNAME,
+        DYCATTR_CERTDER,
+        DYCATTR_PKEYDER,
+        DYCATTR_TRUST,
+        DYCATTR_FORCE,
+        NULL };
+    char *skipped_attrs[] = {
+        SLAPI_ATTR_OBJECTCLASS,
+        SLAPI_ATTR_UNIQUEID,
+        "creatorsName",
+        "modifiersName",
+        "createTimestamp",
+        "modifyTimestamp",
+        NULL };
+
+    /*
+     * Check to make sure the entry passes the schema check
+     */
+    if (slapi_entry_schema_check(pb, e) != 0) {
+        char *err;
+        slapi_pblock_get(pb, SLAPI_PB_RESULT_TEXT, &err);
+        if (err && err[0]) {
+            PL_strncpyz(errmsg, err, SLAPI_DSE_RETURNTEXT_SIZE);
+        }
+        return LDAP_OBJECT_CLASS_VIOLATION;
+    }
+    /* Check if the attribute values in the entry obey the syntaxes */
+    if (slapi_entry_syntax_check(pb, e, 0) != 0) {
+        char *err;
+        slapi_pblock_get(pb, SLAPI_PB_RESULT_TEXT, &err);
+        if (err && err[0]) {
+            PL_strncpyz(errmsg, err, SLAPI_DSE_RETURNTEXT_SIZE);
+        }
+        return LDAP_INVALID_SYNTAX;
+    }
+    /* Check that only expected attributes are present. */
+    slapi_entry_first_attr(e, &a);
+    for (; a != NULL; slapi_entry_next_attr(e, a, &a)) {
+        Slapi_Value *v = NULL;
+        int i = 0;
+        if (charray_inlist(skipped_attrs, a->a_type)) {
+            continue;
+        }
+        i = slapi_attr_first_value(a, &v);
+        if (i == -1 || slapi_attr_next_value(a, i, &v) != -1) {
+            PR_snprintf(errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                        "Attribute %s should be single valued", a->a_type);
+            return LDAP_UNWILLING_TO_PERFORM;
+        }
+        if (!charray_inlist(allowedattrs, a->a_type)) {
+            PR_snprintf(errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                        "Unexpected attribute: %s", a->a_type);
+            return LDAP_OBJECT_CLASS_VIOLATION;
+        }
+    }
+    /* Check that nsDynamicCertificateDER attribute is present */
+    if ((needcert || slapi_entry_attr_get_ref(e, DYCATTR_PKEYDER)) &&
+        !slapi_entry_attr_get_ref(e, DYCATTR_CERTDER)) {
+        PR_snprintf(errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                    "Attribute %s should be present", DYCATTR_CERTDER);
+        return LDAP_UNWILLING_TO_PERFORM;
+    }
+    /* Check that the dn is cn=nickname,DYNCERTS_SUFFIX */
+    if (dyncert_nickname_from_dn(sdn) == NULL) {
+        PR_snprintf(errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                    "Invalid DN for a Dynamic certificate entry."
+                    " DN should be like cn=nickname,%s", DYNCERTS_SUFFIX);
+        return LDAP_NAMING_VIOLATION;
+    }
+    return rc;
+}
+
+/* Store the entry in NSS db */
+int
+dyncerts_import_entry(Slapi_Entry *e, char *errmsg, bool verifyOnly)
+{
+    int rc = LDAP_SUCCESS;
+    CertCtx_t ctx = {0};
+
+    ctx.nickname = slapi_entry_attr_get_charptr(e, DYCATTR_NICKNAME);
+    ctx.dercert = slapi_entry_attr_get_secitem(e, DYCATTR_CERTDER);
+    ctx.derpkey = slapi_entry_attr_get_secitem(e, DYCATTR_PKEYDER);
+    ctx.trust = slapi_entry_attr_get_charptr(e, DYCATTR_TRUST);
+    ctx.force = (slapi_entry_attr_get_bool(e, DYCATTR_FORCE) == PR_TRUE);
+    ctx.errmsg = errmsg;
+    ctx.sdn = (Slapi_DN*) slapi_entry_get_sdn_const(e);
+    rc = dyncerts_import_cert_and_key(&ctx, verifyOnly);
+    dyncerts_cert_ctx_done(&ctx);
+    return rc;
+}
+
+/* Backend callback (add operation) */
+int
+dyncerts_add(Slapi_PBlock *pb)
+{
+    char returntext[SLAPI_DSE_RETURNTEXT_SIZE] = "";
+    struct dyncerts *pdcerts = NULL;
+    int error = LDAP_SUCCESS;
+    int rc = LDAP_SUCCESS;
+    Slapi_Entry *e = NULL;
+    const char *dn = "???";
+    Slapi_DN *sdn = NULL;
+    DCSS *ss = NULL;
+
+    /*
+     * Get the database, the dn and the entry to add
+     */
+    if (slapi_pblock_get(pb, SLAPI_PLUGIN_PRIVATE, &pdcerts) < 0 ||
+        slapi_pblock_get(pb, SLAPI_ADD_TARGET_SDN, &sdn) < 0 ||
+        slapi_pblock_get(pb, SLAPI_ADD_ENTRY, &e) < 0 || (NULL == pdcerts)) {
+        rc = LDAP_OPERATIONS_ERROR;
+        goto done;
+    }
+    dn = slapi_sdn_get_dn(slapi_entry_get_sdn_const(e));
+
+    /* Check entry attributes */
+    rc = dyncerts_check_entry(pb, e, returntext, true);
+    if (rc) {
+        e = NULL; /* caller will free upon error */
+        goto done;
+    }
+    /* Check that entry does not exist */
+    if (dyncerts_find_entry(sdn, LDAP_SCOPE_BASE, NULL, &ss)) {
+        e = NULL; /* caller will free upon error */
+        rc = LDAP_ALREADY_EXISTS;
+        goto done;
+    }
+    rc = dyncerts_import_entry(e, returntext, false);
+    e = NULL; /* caller will free it */
+done:
+    if (e) {
+        slapi_pblock_set(pb, SLAPI_ENTRY_POST_OP, slapi_entry_dup(e));
+    }
+    /* make sure OPRETURN and RESULT_CODE are set */
+    slapi_pblock_get(pb, SLAPI_PLUGIN_OPRETURN, &error);
+    if (rc) {
+        if (!error) {
+            slapi_pblock_set(pb, SLAPI_PLUGIN_OPRETURN, &rc);
+        }
+        slapi_log_err(SLAPI_LOG_DYC, "dyncerts_add",
+                      "Add operation of entry %s failed: rc=%d : %s\n",
+                      dn, rc, returntext);
+    }
+    ss_destroy(&ss);
+    slapi_send_ldap_result(pb, rc, NULL, returntext[0] ? returntext : NULL, 0, NULL);
+    return rc;
+}
+
+/* Create pseudo entry to add from modifiers */
+static int
+dyncerts_mods2entry(Slapi_PBlock *pb, Slapi_DN *sdn, LDAPMod **mods, char *errmsg, Slapi_Entry **pte)
+{
+    Slapi_Entry *e = *pte = slapi_entry_alloc();
+    const char *nickname = dyncert_nickname_from_dn(sdn);
+    const char *val = NULL;
+    char *dn = slapi_ch_strdup(slapi_sdn_get_dn(sdn));
+    int rc = LDAP_SUCCESS;
+
+    if (!nickname) {
+        /* Should not happen (unless heap corruption) because we already
+         * tested that the modified entry exists
+         */
+        return LDAP_NAMING_VIOLATION;
+    }
+    slapi_entry_init(e, dn, NULL);
+    slapi_entry_add_string(e, "objectclass", "top");
+    slapi_entry_add_string(e, "objectclass", "extensibleobject");
+    slapi_entry_add_string(e, DYCATTR_NICKNAME, nickname);
+    rc = slapi_entry_apply_mods(e, mods);
+    if (rc) {
+        return rc;
+    }
+    val = slapi_entry_attr_get_charptr(e, DYCATTR_NICKNAME);
+    if (strcasecmp(val, nickname)) {
+        /* cn attribute was changed ! */
+        return LDAP_NAMING_VIOLATION;
+    }
+    return dyncerts_check_entry(pb, e, errmsg, false);
+}
+
+/* dyncerts_apply_cb callback to change trust flags */
+void
+dyncert_set_trust_cb(CertCtx_t *ctx)
+{
+    Slapi_Entry *e = ctx->arg;
+    CERTCertTrust trust = {0};
+    int rv = 0;
+
+    ctx->trust = slapi_entry_attr_get_charptr(e, DYCATTR_TRUST);
+    rv = CERT_DecodeTrustString(&trust, ctx->trust);
+    rv = CERT_ChangeCertTrust(ctx->cert->dbhandle, ctx->cert, &trust);
+    if (rv != SECSuccess) {
+        rv = PR_GetError();
+        ctx->ldaprc = LDAP_UNWILLING_TO_PERFORM;
+        PR_snprintf(ctx->errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                    "Failed to change trust for certificate %s. Error is %d - %s.\n",
+                    ctx->fullnickname, rv, slapd_pr_strerror(rv));
+    }
+}
+
+/* dyncerts_apply_cb callback to delete a certificate */
+void
+dyncert_delete_cb(CertCtx_t *ctx)
+{
+    int rc = SEC_DeletePermCertificate(ctx->cert);
+    if (rc == SECFailure) {
+        rc = PR_GetError();
+        ctx->ldaprc = LDAP_UNWILLING_TO_PERFORM;
+        PR_snprintf(ctx->errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                    "Failed to delete certificate %s. Error is %d - %s.\n",
+                    ctx->fullnickname, rc, slapd_pr_strerror(rc));
+    }
+}
+
+/* modify a certificate entry */
+int
+dyncerts_modify_cert(Slapi_PBlock *pb, Slapi_Entry *e, LDAPMod **mods, DCSS *ss, char *errmsg)
+{
+    Slapi_DN *sdn = (Slapi_DN *) slapi_entry_get_sdn_const(e);
+    Slapi_Entry *newe = NULL;
+    int rc = dyncerts_mods2entry(pb, sdn, mods, errmsg, &newe);
+
+    if (rc) {
+        slapi_entry_free(newe);
+        return rc;
+    }
+    if (slapi_entry_attr_get_charptr(newe, DYCATTR_CERTDER)) {
+        /* need to change the certificate ==> import the entry */
+        rc = dyncerts_import_entry(newe, errmsg, true);
+        if (rc == LDAP_SUCCESS) {
+                const char *nickname = dyncert_nickname_from_dn(sdn);
+                if (!nickname) {
+                    rc = LDAP_UNWILLING_TO_PERFORM;
+                } else {
+                    /* Remove current certificate */
+                    rc = dyncerts_apply_cb(nickname, dyncert_delete_cb, NULL, errmsg);
+                    /* Then add new one */
+                    rc = dyncerts_import_entry(newe, errmsg, false);
+                }
+        }
+    } else {
+        /* Just change the trust */
+        const char *nickname = dyncert_nickname_from_dn(sdn);
+        if (!nickname) {
+            /* Should not happen (unless heap corruption) because we already
+             * tested that the modified entry exists
+             */
+            return LDAP_NAMING_VIOLATION;
+        }
+        rc = dyncerts_apply_cb(nickname, dyncert_set_trust_cb, newe, errmsg);
+    }
+    slapi_entry_free(newe);
+    return rc;
+}
+
+/* modify the container entry */
+int
+dyncerts_modify_cont(Slapi_Entry *e, LDAPMod **mods, DCSS *ss, char *errmsg)
+{
+    Slapi_PBlock *mod_pb = NULL;
+    Slapi_DN sdn = {0};
+    int rc = LDAP_SUCCESS;
+
+    for (size_t i=0; mods[i]; i++) {
+        if (strcasecmp(mods[i]->mod_type, "aci")) {
+            PR_snprintf(errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                        "Only aci can be changed on %s entry", DYNCERTS_SUFFIX);
+            return LDAP_UNWILLING_TO_PERFORM;
+        }
+    }
+    /* Lets perform the operation directly on cn=encryption,cn=config */
+    slapi_sdn_init_dn_byref(&sdn, CONFIG_DN2);
+    mod_pb = slapi_pblock_new();
+    slapi_modify_internal_set_pb_ext(mod_pb, &sdn, mods, NULL, NULL, plugin_get_default_component_id(), 0);
+    slapi_modify_internal_pb(mod_pb);
+    slapi_pblock_get(mod_pb, SLAPI_PLUGIN_INTOP_RESULT, &rc);
+    if (rc != LDAP_SUCCESS) {
+        char *err;
+        slapi_pblock_get(mod_pb, SLAPI_PB_RESULT_TEXT, &err);
+        if (err && err[0]) {
+            PL_strncpyz(errmsg, err, SLAPI_DSE_RETURNTEXT_SIZE);
+        }
+    }
+    slapi_pblock_destroy(mod_pb);
+    slapi_sdn_done(&sdn);
+    return rc;
+}
+
+/* Backend callback (modify operation) */
+int
+dyncerts_modify(Slapi_PBlock *pb)
+{
+    char returntext[SLAPI_DSE_RETURNTEXT_SIZE] = "";
+    struct dyncerts *pdcerts = NULL;
+    int rc = LDAP_SUCCESS;
+    Slapi_Entry *e = NULL;
+    LDAPMod **mods = NULL;
+    const char *dn = NULL;
+    Slapi_DN *sdn = NULL;
+    DCSS *ss = NULL;
+
+    /*
+     * Get the database, the dn and the modifiers
+     */
+    PR_ASSERT(pb);
+    if (slapi_pblock_get(pb, SLAPI_PLUGIN_PRIVATE, &pdcerts) < 0 ||
+        slapi_pblock_get(pb, SLAPI_MODIFY_TARGET_SDN, &sdn) < 0 ||
+        slapi_pblock_get(pb, SLAPI_MODIFY_MODS, &mods) < 0 || (NULL == pdcerts)) {
+        rc = LDAP_OPERATIONS_ERROR;
+        goto done;
+    }
+
+    dn = slapi_sdn_get_dn(sdn);
+    e = dyncerts_find_entry(sdn, LDAP_SCOPE_BASE, NULL, &ss);
+    if (!e) {
+        rc = LDAP_NO_SUCH_OBJECT;
+        goto done;
+    }
+    if (e == ss->entries[0]) {
+        rc =  dyncerts_modify_cont(e, mods, ss, returntext);
+    } else {
+        rc =  dyncerts_modify_cert(pb, e, mods, ss, returntext);
+    }
+done:
+    if (rc) {
+        slapi_pblock_set(pb, SLAPI_PLUGIN_OPRETURN, &rc);
+        slapi_log_err(SLAPI_LOG_DYC, "dyncerts_modify",
+                      "Modify operation of entry %s failed: rc=%d : %s\n",
+                      dn, rc, returntext);
+    }
+    ss_destroy(&ss);
+    slapi_send_ldap_result(pb, rc, NULL, returntext[0] ? returntext : NULL, 0, NULL);
+
+    return rc;
+}
+
+/* dyncerts_apply_cb/PK11_TraverseSlotCerts callback */
+static SECStatus
+dyncert_find_cert_cb(CERTCertificate *cert, SECItem *sitem, void *arg)
+{
+    CertCtx_t *ctx = arg;
+    ctx->cert = cert;
+    const char *slotname = PK11_GetTokenName(cert->slot);
+    if (ctx->internal_token != is_internal_slot(slotname)) {
+        /* Wrong slot ! */
+        return SECSuccess;
+    }
+    if (!ctx->internal_token && strcasecmp(ctx->token, slotname)) {
+        /* Still wrong slot ! */
+        return SECSuccess;
+    }
+    if (strcasecmp(cert->nickname, ctx->nickname)==0) {
+        if (ctx->internal_token) {
+            ctx->fullnickname = slapi_ch_strdup(ctx->nickname);
+        } else {
+            ctx->fullnickname = slapi_ch_smprintf("%s:%s", ctx->token, ctx->nickname);
+        }
+        ctx->ldaprc = LDAP_SUCCESS;
+        ctx->action_cb(ctx);
+        slapi_ch_free_string(&ctx->fullnickname);
+    }
+    return (ctx->ldaprc == LDAP_NO_SUCH_OBJECT) ? SECSuccess: SECFailure;
+}
+
+/* Apply a callback on the certificate with the nickname */
+int
+dyncerts_apply_cb(const char *nickname, dyc_action_cb_t cb, void *arg, char *errmsg)
+{
+    CertCtx_t ctx = {0};
+    int rc = LDAP_SUCCESS;
+
+    ctx.nickname = slapi_ch_strdup(nickname);
+    ctx.errmsg = errmsg;
+    ctx.arg = arg;
+    ctx.action_cb = cb;
+    ctx.ldaprc = LDAP_NO_SUCH_OBJECT;
+    rc = dyncert_resolve_token(&ctx);
+    /* Could probably avoid to look in all slots but PK11_TraverseCertsInSlot is private */
+    if (rc == 0) {
+        (void) PK11_TraverseSlotCerts(dyncert_find_cert_cb, &ctx, NULL);
+    }
+    rc = ctx.ldaprc;
+    dyncerts_cert_ctx_done(&ctx);
+    return rc;
 }
 
 /* Backend callback (unbind operation) */
@@ -830,17 +1467,25 @@ get_entry_list(const Slapi_DN *basesn, int scope, char **attrs)
     if (charray_inlist(attrs, "aci") || charray_inlist(attrs, "+") ||
         charray_inlist(attrs, "*")) {
         const struct slapi_value **va = NULL;
+#if 0
         struct slapi_value va2_0 = {0};
         struct slapi_value *va2[2] = { &va2_0, NULL };
+#endif
         Slapi_Entry *ce = get_config_entry(ENCRYPTION_CONFIG_ENTRY_IDX);
         if (ce) {
             va = slapi_entry_attr_get_valuearray(ce, "aci");
         }
+#if 0
         if (!va) {
             slapi_value_init_string_passin(&va2_0, DYNCERTS_DEFAULT_ACI);
             va = (const struct slapi_value **)va2;
         }
         slapi_entry_attr_replace_sv(e, "aci", (struct slapi_value **)va);
+#else
+        if (va) {
+            slapi_entry_attr_replace_sv(e, "aci", (struct slapi_value **)va);
+        }
+#endif
     }
     ss_add_entry(ss, e);
     if (LDAP_SCOPE_BASE == scope) {
@@ -856,6 +1501,183 @@ get_entry_list(const Slapi_DN *basesn, int scope, char **attrs)
         (void) PK11_TraverseSlotCerts(dyncerts_list_cert_cb, ss, NULL);
     }
     return ss;
+}
+
+/* Backend callback (delete operation) */
+int
+dyncerts_delete(Slapi_PBlock *pb)
+{
+    char returntext[SLAPI_DSE_RETURNTEXT_SIZE] = "";
+    struct dyncerts *pdcerts = NULL;
+    const char *nickname = NULL;
+    int rc = LDAP_SUCCESS;
+    Slapi_Entry *e = NULL;
+    const char *dn = "???";
+    Slapi_DN *sdn = NULL;
+    DCSS *ss = NULL;
+
+    /*
+     * Get the backend context and the dn
+     */
+    if (slapi_pblock_get(pb, SLAPI_PLUGIN_PRIVATE, &pdcerts) < 0 ||
+        slapi_pblock_get(pb, SLAPI_DELETE_TARGET_SDN, &sdn) < 0 ||
+        (pdcerts == NULL)) {
+        rc = LDAP_OPERATIONS_ERROR;
+        goto done;
+    }
+    /* Check that the entry exists */
+    dn = slapi_sdn_get_dn(sdn);
+    e = dyncerts_find_entry(sdn, LDAP_SCOPE_BASE, NULL, &ss);
+    if (e==NULL) {
+        rc = LDAP_NO_SUCH_OBJECT;
+        goto done;
+    }
+    nickname = dyncert_nickname_from_dn(sdn);
+    if (!nickname) {
+        /* Attempt to delete the container entry */
+        rc = LDAP_UNWILLING_TO_PERFORM;
+        goto done;
+    }
+    rc = dyncerts_apply_cb(nickname, dyncert_delete_cb, NULL, returntext);
+
+done:
+    if (rc) {
+        slapi_pblock_set(pb, SLAPI_PLUGIN_OPRETURN, &rc);
+        slapi_log_err(SLAPI_LOG_DYC, "dyncerts_delete",
+                      "Delete operation of entry %s failed: rc=%d : %s\n",
+                      dn, rc, returntext);
+    }
+    ss_destroy(&ss);
+    slapi_send_ldap_result(pb, rc, NULL, returntext[0] ? returntext : NULL, 0, NULL);
+
+    return rc;
+}
+
+/* dyncerts_apply_cb callback to modrdn a certificate */
+void
+dyncert_rename_cb(CertCtx_t *ctx)
+{
+    const char *new_dn = ctx->arg;
+    CertCtx_t new_ctx = {0};
+    Slapi_DN sdn_new = {0};
+    int rc = 0;
+    slapi_sdn_init_dn_byref(&sdn_new, new_dn);
+    new_ctx.nickname = slapi_ch_strdup(dyncert_nickname_from_dn(&sdn_new));
+    new_ctx.errmsg = ctx->errmsg;
+    rc = dyncert_resolve_token(&new_ctx);
+    /* Could probably avoid to look in all slots but PK11_TraverseCertsInSlot is private */
+    if (rc != 0) {
+        ctx->ldaprc = rc;
+    }
+    if (ctx->internal_token != new_ctx.internal_token) {
+        ctx->ldaprc = LDAP_UNWILLING_TO_PERFORM;
+        PR_snprintf(ctx->errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                    "Cannot use modrdn operation to change the token name");
+    }
+    if (rc == 0 && !ctx->internal_token &&
+        strcasecmp(ctx->token, new_ctx.token) != 0) {
+        ctx->ldaprc = LDAP_UNWILLING_TO_PERFORM;
+        PR_snprintf(ctx->errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                    "Cannot use modrdn operation to change the token name");
+    }
+    if (rc == 0) {
+        rc = __PK11_SetCertificateNickname(ctx->cert, new_ctx.nickname);
+        if (rc == SECFailure) {
+            rc = PR_GetError();
+            ctx->ldaprc = LDAP_UNWILLING_TO_PERFORM;
+            PR_snprintf(ctx->errmsg, SLAPI_DSE_RETURNTEXT_SIZE,
+                        "Failed to rename certificate %s to %s. Error is %d - %s.\n",
+                        ctx->fullnickname, new_ctx.fullnickname, rc, slapd_pr_strerror(rc));
+        }
+    }
+    dyncerts_cert_ctx_done(&new_ctx);
+    slapi_sdn_done(&sdn_new);
+}
+
+/* Backend callback (modrdn operation) */
+int
+dyncerts_rename(Slapi_PBlock *pb)
+{
+    char returntext[SLAPI_DSE_RETURNTEXT_SIZE] = "";
+    struct dyncerts *pdcerts = NULL;
+    const char *old_nickname = NULL;
+    const char *new_nickname = NULL;
+    int rc = LDAP_SUCCESS;
+    Slapi_Entry *e = NULL;
+    const char *old_dn = "???";
+    Slapi_DN *sdn = NULL;
+    Slapi_DN *sdn_newsup = NULL;
+    Slapi_DN sdn_new = {0};
+    DCSS *ss = NULL;
+    char *new_rdn = NULL;
+    const char *new_sup = NULL;
+    const char *new_dn = NULL;
+
+    slapi_pblock_get(pb, SLAPI_MODRDN_TARGET_SDN, &sdn);
+    /*
+     * Get the backend context and the dn
+     */
+    if (slapi_pblock_get(pb, SLAPI_PLUGIN_PRIVATE, &pdcerts) < 0 ||
+        slapi_pblock_get(pb, SLAPI_MODRDN_TARGET_SDN, &sdn) < 0 ||
+        (pdcerts == NULL)) {
+        rc = LDAP_OPERATIONS_ERROR;
+        goto done;
+    }
+    old_dn = slapi_sdn_get_dn(sdn);
+    slapi_pblock_get(pb, SLAPI_MODRDN_NEWRDN, &new_rdn);
+    if (new_rdn == NULL) {
+        rc = LDAP_OPERATIONS_ERROR;
+        goto done;
+    }
+    slapi_pblock_get(pb, SLAPI_MODRDN_NEWSUPERIOR_SDN, &sdn_newsup);
+    new_sup = slapi_sdn_get_dn(sdn_newsup);
+    if (new_sup) {
+        new_dn = slapi_ch_smprintf("%s,%s", new_rdn, new_sup);
+    } else {
+        new_dn = slapi_ch_smprintf("%s,%s", new_rdn, slapi_dn_find_parent(old_dn));
+    }
+    slapi_sdn_init_dn_passin(&sdn_new, new_dn);
+    if (slapi_sdn_compare(&sdn_new, sdn) == 0) {
+        /* NOOP */
+        rc = LDAP_SUCCESS;
+        goto done;
+    }
+    e = dyncerts_find_entry(sdn, LDAP_SCOPE_BASE, NULL, &ss);
+    ss_destroy(&ss);
+    if (e == NULL) {
+        rc = LDAP_NO_SUCH_OBJECT;
+        goto done;
+    }
+    old_nickname = dyncert_nickname_from_dn(sdn);
+    if (!old_nickname) {
+        /* Attempt to delete the container entry */
+        rc = LDAP_UNWILLING_TO_PERFORM;
+        goto done;
+    }
+    e = dyncerts_find_entry(&sdn_new, LDAP_SCOPE_BASE, NULL, &ss);
+    ss_destroy(&ss);
+    if (e != NULL) {
+        rc = LDAP_ALREADY_EXISTS;
+        goto done;
+    }
+    new_nickname = dyncert_nickname_from_dn(&sdn_new);
+    if (!new_nickname) {
+        rc = LDAP_UNWILLING_TO_PERFORM;
+        goto done;
+    }
+    rc = dyncerts_apply_cb(old_nickname, dyncert_rename_cb, (void*) new_dn, returntext);
+
+done:
+    if (rc) {
+        slapi_pblock_set(pb, SLAPI_PLUGIN_OPRETURN, &rc);
+        slapi_log_err(SLAPI_LOG_DYC, "dyncerts_delete",
+                      "Modrdn operation of entry %s failed: rc=%d : %s\n",
+                      old_dn, rc, returntext);
+    }
+    slapi_sdn_done(&sdn_new);
+    slapi_send_ldap_result(pb, rc, NULL, returntext[0] ? returntext : NULL, 0, NULL);
+
+    return rc;
 }
 
 /* Create the dynamic certificate backend */
@@ -877,14 +1699,12 @@ dyncert_init_be()
         be->be_database->plg_search_results_release = &dyncerts_search_set_release;
         be->be_database->plg_prev_search_results = &dyncerts_prev_search_results;
         be->be_database->plg_compare = &be_unwillingtoperform;
-/*
-        be->be_database->plg_modify = &dyncerts_modify;
-        be->be_database->plg_modrdn = &be_unwillingtoperform;
         be->be_database->plg_add = &dyncerts_add;
+        be->be_database->plg_modify = &dyncerts_modify;
+        be->be_database->plg_modrdn = &dyncerts_rename;
         be->be_database->plg_delete = &dyncerts_delete;
         be->be_database->plg_abandon = &be_unwillingtoperform;
-        be->be_database->plg_cleanup = dyncerts_deletedyncerts;
-*/
+        be->be_database->plg_cleanup = &dyncerts_cleanup;
         /* All the other function pointers default to NULL */
 
         slapi_sdn_init_ndn_byref(&dn, DYNCERTS_SUFFIX);
