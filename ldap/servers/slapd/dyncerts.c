@@ -885,6 +885,17 @@ nss_add_cert_and_key(CertCtx_t *ctx, bool verifyOnly)
         errmsg = "Failed to decode certificate";
         goto done;
     }
+    if (cert->isperm && !(verifyOnly && strcasecmp(ctx->nickname, cert->nickname) == 0)) {
+        /* Certificate already exists so NSS will not add it again
+         * and we are not doing a modify operation that replace the certificate
+         * by itself
+         */
+        rv = SECFailure;
+        ctx->ldaprc = LDAP_UNWILLING_TO_PERFORM;
+        PR_snprintf((ctx)->errmsg, SLAPI_DSE_RETURNTEXT_SIZE, "Confict with certificate %s",
+                    cert->nickname);
+        goto done2;
+    }
     ctx->primary = is_servercert(ctx->cert);
     if (!ctx->trust) {
         ctx->trust = ",,";
@@ -941,7 +952,6 @@ nss_add_cert_and_key(CertCtx_t *ctx, bool verifyOnly)
     }
     rv = SECSuccess;
 done:
-    ctx->privkey = privkey;
     if (rv) {
         rv = PR_GetError();
         ctx->ldaprc = LDAP_UNWILLING_TO_PERFORM;
@@ -950,6 +960,8 @@ done:
                         errmsg, rv, slapd_pr_strerror(rv));
         }
     }
+done2:
+    ctx->privkey = privkey;
     if (pubkey) {
         SECKEY_DestroyPublicKey(pubkey);
     }
