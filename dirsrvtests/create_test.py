@@ -18,7 +18,10 @@ import os
 import re
 import sys
 import uuid
-from lib389 import topologies
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+
+from test389.topologies import topologies
 
 """This script generates a template test script that handles the
 non-interesting parts of a test script:
