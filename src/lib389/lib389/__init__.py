@@ -2742,9 +2742,9 @@ class DirSrv(SimpleLDAPObject, object):
             online = False
         DirSrvTools.runUpgrade(self.ds_paths.prefix, online)
 
-    # Become dirsrv and check that wimport_file is still readable
+    # Become dirsrv and check that import_file is still readable
     @staticmethod
-    def chown_and_test(pw, import_file):
+    def _chown_and_test(pw, import_file):
         if os.getuid() == 0:
             os.setgroups([])
             os.setgid(pw.pw_gid)
@@ -2771,7 +2771,7 @@ class DirSrv(SimpleLDAPObject, object):
             return False
         # Fork a child process, switch it to the user and check that file
         # is still readable
-        p = Process(target=DirSrv.chown_and_test, args=(pw, import_file,))
+        p = Process(target=DirSrv._chown_and_test, args=(pw, import_file,))
         p.start()
         p.join()
         if p.exitcode == 0:
