@@ -109,6 +109,83 @@ void pinned_flush(struct cache *cache);
 static void dn_lru_verify(struct cache *cache, struct backdn *dn, int in);
 #endif
 
+bool pinned_add(struct cache *cache, void *ptr);
+/*
+ * Entry cache rollback
+ *
+ * A parent (top level) update operation (ldbm_back_add, ldbm_back_delete,
+ * ldbm_back_modify and ldbm_back_modrdn called while the thread does not hold
+ * a backend transaction) starts a cache transaction context identified by a
+ * unique tag (cache_txn_begin). The context is stored in a thread local
+ * variable, so the nested (internal) operations run by the plugins in the
+ * same thread (that share the database transaction) also share the tag.
+ *
+ * The entries and dns added or replaced in the caches in the context of a
+ * transaction are tagged with its tag (ep_owner). When a betxn plugin fails,
+ * cache_txn_abort() only evicts the cache items owned by the failing transaction
+ * (instead of all items added since the operation started) and skips the
+ * cache walk if the transaction did not tag anything.
+ * Items loaded from the database (cache_add) by the thread holding the
+ * transaction are tagged only once the transaction has changed something in
+ * the caches: the update code changes an entry in the cache (tentative add or
+ * replace) when it changes it in the database (and the entry being modified
+ * stays in the cache until the end of the operation), so before the first
+ * change, a loaded entry cannot reflect uncommitted changes. That avoids
+ * flagging a transaction as modified because of the plugins internal searches
+ * (typically the attribute uniqueness plugin rejecting the operation).
+ *
+ * The pinned entries (large groups costly to load) replaced in the context of
+ * a transaction are kept (with a reference) in the context, so that they can
+ * be put back in the cache instead of being evicted if the transaction is
+ * rolled back. Note: two different threads cannot modify the same pinned
+ * entry because dblayer_lock_backend monitor protects write operations.
+ */
+typedef struct cache_txn_saved {
+    struct cache_txn_saved *next;
+    struct backentry *e;  /* Entry to add back or evict */
+} cache_txn_saved;
+
+static uint64_t cache_txn_last_tag = 0;
+static __thread cache_txn_ctx *cache_txn_cur = NULL;
+
+/* Start a cache transaction context (parent update operation) */
+void
+cache_txn_begin(cache_txn_ctx *ctx)
+{
+    cache_txn_cur = ctx;
+    PR_ASSERT(ctx->tag == 0);
+    ctx->tag = slapi_atomic_incr_64(&cache_txn_last_tag, __ATOMIC_RELAXED);
+    ctx->changed = NULL;
+}
+
+/*
+ * End a cache transaction context: release the replaced pinned entries
+ * Do nothing if the context was not started.
+ */
+void
+cache_txn_end(void)
+{
+    cache_txn_ctx *ctx = cache_txn_cur;
+    cache_txn_saved *snext = NULL;
+    cache_txn_changed *cnext = NULL;
+
+    if (ctx == NULL || ctx->tag == 0) {
+        return;
+    }
+    for (cache_txn_changed *c = ctx->changed; c; c = cnext) {
+        cnext = c->next;
+        for (cache_txn_saved *s = c->saved; s; s = snext) {
+            snext = s->next;
+            cache_return(c->cache, (void **)&s->e);
+            slapi_ch_free((void**) &s);
+        }
+        slapi_ch_free((void**) &c);
+    }
+    ctx->changed = NULL;
+    ctx->tag = 0;
+}
+
+
 /***** tiny hashtable implementation *****/
 
 #define HASH_VALUE(_key, _keylen) \
@@ -205,7 +282,6 @@ new_hash(u_long size, u_long offset, HashFn hfn, HashTestFn tfn)
 int
 add_hash(Hashtable *ht, void *key, uint32_t keylen, void *entry, void **alt)
 {
-    struct backcommon *back_entry = (struct backcommon *)entry;
     u_long val, slot;
     void *e;
 
@@ -223,7 +299,6 @@ add_hash(Hashtable *ht, void *key, uint32_t keylen, void *entry, void **alt)
         e = HASH_NEXT(ht, e);
     }
     /* ok, it's not already there, so add it */
-    back_entry->ep_create_time = slapi_current_rel_time_hr();
     HASH_NEXT(ht, entry) = ht->slot[slot];
     ht->slot[slot] = entry;
     return 1;
@@ -597,23 +672,6 @@ cache_make_hashes(struct cache *cache, int type)
     }
 }
 
-/*
- * Helper function for flush_hash() to calculate if the entry should be
- * removed from the cache.
- */
-static int32_t
-flush_remove_entry(struct timespec *entry_time, struct timespec *start_time)
-{
-    struct timespec diff;
-
-    slapi_timespec_diff(entry_time, start_time, &diff);
-    if (diff.tv_sec >= 0) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
 static inline void
 dbgec_test_if_entry_pointer_is_valid(void *e, void *prev, int slot, int line)
 {
@@ -642,11 +700,28 @@ dbgec_test_if_entry_pointer_is_valid(void *e, void *prev, int slot, int line)
 }
 
 
+/* Log (if the dn matches the cache debug pattern) an item evicted by a rollback */
+static void
+flush_log_evict(struct cache *cache, void *entry, int32_t type, bool evict)
+{
+    if (cache->c_inst->cache_debug_re) {
+        const char *action = evict ? "evicting" : "reverting";
+        const char *stype = type == ENTRY_CACHE ? "entry cache" : "dn cache";
+        const char *ndn = (type == ENTRY_CACHE) ?
+                          backentry_get_ndn((struct backentry *)entry) :
+                          slapi_sdn_get_ndn(((struct backdn *)entry)->dn_sdn);
+        LOGPATTERN(cache, ndn, "Rollback: %s entry from the %s dn:%s\n",
+                   action, stype, ndn);
+    }
+}
+
 /*
- * Flush all the cache entries that were added after the "start time"
+ * Flush all the cache entries owned by the transaction being rolled back.
  * This is called when a backend transaction plugin fails, and we need
  * to remove all the possible invalid entries in the cache.  We need
  * to check both the ID and DN hashtables when checking the entry cache.
+ * The pinned entries replaced by the transaction are put back in the entry
+ * cache first (instead of evicting their replacement).
  *
  * If the ref count is 0, we can straight up remove it from the cache, but
  * if the ref count is greater than 1, then the entry is currently in use.
@@ -655,7 +730,7 @@ dbgec_test_if_entry_pointer_is_valid(void *e, void *prev, int slot, int line)
  * removed so another thread can not use/lock the invalid cache entry.
  */
 static void
-flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
+flush_hash(struct cache *cache, int32_t type)
 {
     Hashtable *ht = cache->c_idtable; /* start with the ID table as it's in both ENTRY and DN caches */
     void *e, *laste = NULL;
@@ -663,6 +738,9 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
     struct timespec duration;
     struct timespec flush_start;
     struct timespec flush_end;
+    cache_txn_ctx *ctx = cache_txn_cur;
+    PR_ASSERT(ctx);
+    uint64_t tag = ctx->tag;
 
     clock_gettime(CLOCK_MONOTONIC, &flush_start);
     cache_lock(cache);
@@ -673,10 +751,11 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
         while (e) {
             struct backcommon *entry = (struct backcommon *)e;
             uint64_t remove_it = 0;
-            if (flush_remove_entry(&entry->ep_create_time, start_time)) {
+            if (entry->ep_owner == tag) {
                 /* Mark the entry to be removed */
                 slapi_log_err(SLAPI_LOG_CACHE, "flush_hash", "[%s] Removing entry id (%d)\n",
                         type ? "DN CACHE" : "ENTRY CACHE", entry->ep_id);
+                flush_log_evict(cache, entry, type, true);
                 remove_it = 1;
             }
             laste = e;
@@ -715,7 +794,7 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
     }
 
     if (type == ENTRY_CACHE) {
-        /* Also check the DN hashtable */
+        /* Also check the DN hashtable (i.e for the tentative entries) */
         ht = cache->c_dntable;
 
         for (size_t i = 0; i < ht->size; i++) {
@@ -724,10 +803,12 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
             while (e) {
                 struct backcommon *entry = (struct backcommon *)e;
                 uint64_t remove_it = 0;
-                if (flush_remove_entry(&entry->ep_create_time, start_time)) {
+                /* Skip the entries already flagged while walking the ID table */
+                if (entry->ep_owner == tag && (entry->ep_state & ENTRY_STATE_INVALID) == 0) {
                     /* Mark the entry to be removed */
                     slapi_log_err(SLAPI_LOG_CACHE, "flush_hash", "[ENTRY CACHE] Removing entry id (%d)\n",
                             entry->ep_id);
+                    flush_log_evict(cache, entry, type, true);
                     remove_it = 1;
                 }
                 laste = e;
@@ -769,14 +850,201 @@ flush_hash(struct cache *cache, struct timespec *start_time, int32_t type)
     slapi_log_err(SLAPI_LOG_WARNING, "flush_hash", "Upon BETXN callback failure, entry cache is flushed during %s\n", flush_etime);
 }
 
-void
-revert_cache(ldbm_instance *inst, struct timespec *start_time)
+/*
+ * Put back in the entry cache hash tables a saved pinned entry that is no
+ * longer in the cache (i.e removed by the transaction: deleted entry, or
+ * replaced entry whose replacement was removed afterwards).
+ * Returns 0 if the entry is restored.
+ * Cache lock must be held.
+ */
+static int
+cache_txn_restore_removed(struct cache *cache, struct backentry *old, uint64_t tag)
 {
-    if (inst == NULL) {
+    const char *ndn = backentry_get_ndn(old);
+    size_t ndnlen = strlen(ndn);
+    struct backentry *alt = NULL;
+#ifdef UUIDCACHE_ON
+    const char *uuid = slapi_entry_get_uniqueid(old->ep_entry);
+#endif
+
+    if (find_hash(cache->c_dntable, ndn, ndnlen, (void **)&alt)) {
+        if (alt == old || alt->ep_owner != tag) {
+            return -1;
+        }
+        /* alt is freed when its last reference is released */
+        entrycache_remove_int(cache, alt);
+    }
+    if (!add_hash(cache->c_dntable, (void *)ndn, ndnlen, old, NULL)) {
+        return -1;
+    }
+    if (!add_hash(cache->c_idtable, &(old->ep_id), sizeof(ID), old, NULL)) {
+        remove_hash_entry(cache->c_dntable, ndn, ndnlen, old);
+        return -1;
+    }
+#ifdef UUIDCACHE_ON
+    if (uuid && !add_hash(cache->c_uuidtable, (void *)uuid, strlen(uuid), old, NULL)) {
+        remove_hash_entry(cache->c_dntable, ndn, ndnlen, old);
+        remove_hash_entry(cache->c_idtable, &(old->ep_id), sizeof(ID), old);
+        return -1;
+    }
+#endif
+    old->ep_state &= ~ENTRY_STATE_UNAVAILABLE;
+    cache->c_stats.size += old->ep_size;
+    cache->c_stats.nentries++;
+    cache->c_stats.weight += old->ep_weight;
+    if (old->ep_weight) {
+        cache->c_stats.nehw++;
+    }
+    return 0;
+}
+
+/*
+ * Revert the pinned entries replaced or removed by the transaction.
+ * Entries that have been modified are swapped back with the original entry
+ * Entries that have purely deleted are addedd back from the original entry
+ * Entries that cannot be restored stays DELETED and are freed when
+ * cache_txn_end releases them.
+ */
+static void
+cache_txn_revert_pinned(cache_txn_changed *info)
+{
+    cache_txn_ctx *ctx = cache_txn_cur;
+    PR_ASSERT(ctx);
+
+    if (info->type != CACHE_TYPE_ENTRY) {
         return;
     }
-    flush_hash(&inst->inst_cache, start_time, ENTRY_CACHE);
-    flush_hash(&inst->inst_dncache, start_time, DN_CACHE);
+    cache_lock(info->cache);
+    for (cache_txn_saved *s = info->saved; s; s = s->next) {
+        struct backentry *old = s->e;
+        struct backentry *cur = NULL;
+        int rc = -1;
+
+        if (find_hash(info->cache->c_idtable, &old->ep_id, sizeof(ID), (void **)&cur)) {
+            if (cur != old && cur->ep_owner == ctx->tag &&
+                entrycache_replace(info->cache, cur, old) == 0) {
+                /* entrycache_replace took a reference for the caller: drop it
+                 * (the saved reference is kept until cache_txn_end)
+                 */
+                old->ep_refcnt--;
+                rc = 0;
+            }
+        } else {
+            rc = cache_txn_restore_removed(info->cache, old, ctx->tag);
+        }
+        if (rc == 0) {
+            flush_log_evict(info->cache, (struct backcommon *)old, CACHE_TYPE_ENTRY, false);
+        } else {
+            slapi_log_err(SLAPI_LOG_CACHE, "cache_txn_revert_pinned",
+                          "Unable to restore pinned entry %s (id %d)\n",
+                          backentry_get_ndn(old), old->ep_id);
+        }
+    }
+    cache_unlock(info->cache);
+}
+
+/*
+ * Roll back the entry and dn caches modified by the operation thread after a
+ * betxn plugin failure: put back the pinned entries replaced by the transaction
+ * and evict the entries owned by the transaction.
+ * Nothing is done if the transaction did not change anything in the caches.
+ */
+void
+cache_txn_abort(ldbm_instance *inst)
+{
+    cache_txn_ctx *ctx = cache_txn_cur;
+
+    if (inst == NULL || ctx == NULL || ctx->tag == 0) {
+        return;
+    }
+    if (!ctx->changed) {
+        slapi_log_err(SLAPI_LOG_CACHE, "revert_cache",
+                      "Nothing to revert in the caches of %s\n", inst->inst_name);
+        return;
+    }
+    for (cache_txn_changed *c=ctx->changed; c; c=c->next) {
+        /* Restore the pinned entries first (see cache_txn_revert_pinned) */
+        cache_txn_revert_pinned(c);
+        flush_hash(c->cache, c->type);
+    }
+}
+
+/*
+ * Store a entry which should be added back to pinned table in case of revert
+ */
+static void
+cache_txn_save_pinned(cache_txn_saved **ptsaved, struct backentry*e)
+{
+    for (; *ptsaved; ptsaved = &(*ptsaved)->next) {
+        if ((*ptsaved)->e == e) {
+            /* Ensure that the entry is not already there */
+            return;
+        }
+    }
+    if (*ptsaved == NULL) {
+        cache_txn_saved *info;
+        *ptsaved = info = (cache_txn_saved*)slapi_ch_calloc(1, sizeof(cache_txn_saved));
+        info->next = NULL;
+        info->e = e;
+        e->ep_refcnt++;
+    }
+}
+
+/*
+ * Find or create the txn context associated with the cache
+ */
+static cache_txn_changed *
+cache_txn_get_info(struct cache *cache, int type)
+{
+    cache_txn_changed **ptc = &cache_txn_cur->changed;
+    cache_txn_changed *info = NULL;
+    /* Let find the cache_txn_ctx for that cache */
+    while (*ptc) {
+        info = *ptc;
+        if (info->cache == cache) {
+            break;
+        }
+        ptc = &info->next;
+    }
+    if (*ptc == NULL) {
+        info = *ptc = (cache_txn_changed*) slapi_ch_calloc(1, sizeof (cache_txn_changed));
+        info->cache = cache;
+        info->next = NULL;
+        info->saved = NULL;
+        info->type = type;
+    }
+    return info;
+}
+
+/*
+ * Register the fact that an entry is modified
+ */
+static void
+cache_txn_replace_entry(struct cache *cache, void *old, void *new)
+{
+    struct backentry *eold = (struct backentry *)old;
+    struct backentry *enew = (struct backentry *)new;
+    cache_txn_ctx *ctx = cache_txn_cur;
+    cache_txn_changed *info = NULL;
+
+    if (ctx == NULL || ctx->tag == 0) {
+        return;
+    }
+    info = cache_txn_get_info(cache, eold?eold->ep_type:enew->ep_type);
+    if (enew) {
+        /* Take ownership */
+        enew->ep_owner = ctx->tag;
+    } else {
+        if (info->type == CACHE_TYPE_ENTRY) {
+            /* Tell that this entry should be added back to pinned table if reverted
+             * (unless it contains changes done by this transaction)
+             */
+            if (eold && (eold->ep_state & ENTRY_STATE_PINNED) &&
+                eold->ep_owner != ctx->tag) {
+                cache_txn_save_pinned(&info->saved, eold);
+            }
+        }
+    }
 }
 
 /* initialize the cache */
@@ -1167,6 +1435,18 @@ entrycache_remove_int(struct cache *cache, struct backentry *e)
         return ret;
     }
 
+    if (e->ep_state & ENTRY_STATE_PINNED) {
+        /* A removed entry must not stay in the pinned list (it would be
+         * freed while still linked in it).
+         * Hold a reference so that pinned_remove does not move the entry
+         * in the lru (the entry may be released with refcnt 0 by
+         * entrycache_return for invalid entries)
+         */
+        e->ep_refcnt++;
+        pinned_remove(cache, e);
+        e->ep_refcnt--;
+    }
+
     /* remove from all hashtables -- this function may be called from places
      * where the entry isn't in all the tables yet, so we don't care if any
      * of these return errors.
@@ -1400,6 +1680,10 @@ cache_remove(struct cache *cache, void *ptr)
     cache_lock(cache);
     if (CACHE_TYPE_ENTRY == e->ep_type) {
         ASSERT(e->ep_refcnt > 0);
+        if (e->ep_state & ENTRY_STATE_PINNED) {
+            /* Register the pinned entry to restore if the txn is aborted */
+            cache_txn_replace_entry(cache, e, NULL);
+        }
         ret = entrycache_remove_int(cache, (struct backentry *)e);
     } else if (CACHE_TYPE_DN == e->ep_type) {
         ret = dncache_remove_int(cache, (struct backdn *)e);
@@ -1416,6 +1700,7 @@ int
 cache_replace(struct cache *cache, void *oldptr, void *newptr)
 {
     struct backcommon *olde;
+    int rc = -1;
     if (NULL == oldptr || NULL == newptr) {
         LOG("=> lru_replace\n<= lru_replace (null entry)\n");
         return 0;
@@ -1423,13 +1708,16 @@ cache_replace(struct cache *cache, void *oldptr, void *newptr)
     olde = (struct backcommon *)oldptr;
 
     if (CACHE_TYPE_ENTRY == olde->ep_type) {
-        return entrycache_replace(cache, (struct backentry *)oldptr,
+        rc = entrycache_replace(cache, (struct backentry *)oldptr,
                                   (struct backentry *)newptr);
     } else if (CACHE_TYPE_DN == olde->ep_type) {
-        return dncache_replace(cache, (struct backdn *)oldptr,
+        rc = dncache_replace(cache, (struct backdn *)oldptr,
                                (struct backdn *)newptr);
     }
-    return 0;
+    if (rc == 0) {
+        cache_txn_replace_entry(cache, oldptr, newptr);
+    }
+    return rc;
 }
 
 static int
@@ -1474,6 +1762,11 @@ entrycache_replace(struct cache *cache, struct backentry *olde, struct backentry
     }
 
     cache_lock(cache);
+
+    if (olde->ep_state & ENTRY_STATE_PINNED) {
+        cache_txn_replace_entry(cache, olde, NULL); /* Register the entry to restore */
+        pinned_remove(cache, olde);   /* refcnt > 0, so it is not put on the LRU */
+    }
 
     /*
      * First, remove the old entry from all the hashtables.
@@ -1641,8 +1934,10 @@ entrycache_return(struct cache *cache, struct backentry **bep, PRBool locked)
                      * State is "deleted" and there are no more references,
                      * so we need to remove the entry from the DN cache because
                      * we don't/can't always call cache_remove().
+                     * Only remove this entry: the dn may now be owned by the
+                     * entry that replaced it (cache_replace).
                      */
-                    if (remove_hash(cache->c_dntable, (void *)ndn, strlen(ndn)) == 0) {
+                    if (remove_hash_entry(cache->c_dntable, (void *)ndn, strlen(ndn), e) == 0) {
                         LOG("entrycache_return -Failed to remove %s from dn table\n", ndn);
                     }
                 }
@@ -2058,7 +2353,11 @@ cache_add(struct cache *cache, void *ptr, void **alt)
 int
 cache_add_tentative(struct cache *cache, struct backentry *e, struct backentry **alt)
 {
-    return entrycache_add_int(cache, e, ENTRY_STATE_CREATING, alt);
+    int rc = entrycache_add_int(cache, e, ENTRY_STATE_CREATING, alt);
+    if (rc == 0) {
+        cache_txn_replace_entry(cache, NULL, e);
+    }
+    return rc;
 }
 
 void

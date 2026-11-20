@@ -100,10 +100,9 @@ ldbm_back_modrdn(Slapi_PBlock *pb)
     int op_id;
     int result_sent = 0;
     Connection *pb_conn = NULL;
-    int32_t parent_op = 0;
+    bool parent_op = false;
     int32_t betxn_callback_fails = 0; /* if a BETXN fails we need to revert entry cache */
-    int32_t cache_mod_phase = 0; /* set when we reach the cache modification phase */
-    struct timespec parent_time;
+    cache_txn_ctx cache_txn = {0}; /* storage for the parent operation cache txn context */
     Slapi_Mods *smods_add_rdn = NULL;
 
     if (slapi_pblock_get(pb, SLAPI_CONN_ID, &conn_id) < 0) {
@@ -145,9 +144,9 @@ ldbm_back_modrdn(Slapi_PBlock *pb)
     dblayer_txn_init(li, &txn);
 
     if (txn.back_txn_txn == NULL) {
-        /* This is the parent operation, get the time */
-        parent_op = 1;
-        parent_time = slapi_current_rel_time_hr();
+        /* This is the parent operation, start the cache transaction context */
+        parent_op = true;
+        cache_txn_begin(&cache_txn);
     }
 
     /* the calls to perform searches require the parent txn if any
@@ -196,6 +195,7 @@ ldbm_back_modrdn(Slapi_PBlock *pb)
         slapi_log_err(SLAPI_LOG_ERR, "ldbm_back_modrdn",
                       "Instance \"%s\" does not exist.\n",
                       inst ? inst->inst_name : "null instance");
+        cache_txn_end();
         return (-1);
     }
 
@@ -1185,8 +1185,6 @@ ldbm_back_modrdn(Slapi_PBlock *pb)
         goto error_return;
     }
 
-    /* We're now past the BETXN PRE phase and entering the cache modification phase */
-    cache_mod_phase = 1;
     postentry = slapi_entry_dup(ec->ep_entry);
 
     if (parententry != NULL) {
@@ -1369,12 +1367,9 @@ error_return:
         }
     }
 
-    /* Revert the caches if this is the parent operation AND we reached the
-     * cache modification phase. If BETXN PRE fails, cache_mod_phase is 0
-     * and we don't need to revert since no cache modifications were made.
-     */
-    if (parent_op && betxn_callback_fails && cache_mod_phase) {
-        revert_cache(inst, &parent_time);
+    /* In failure case, revert the caches if this is the parent operation */
+    if (parent_op && betxn_callback_fails) {
+        cache_txn_abort(inst);
     }
 
 common_return:
@@ -1524,6 +1519,9 @@ common_return:
     if (li->li_flags & LI_LMDB_IMPL) {
         cache_clear(&inst->inst_dncache, 1);
         cache_clear(&inst->inst_cache, 0);
+    }
+    if (parent_op) {
+        cache_txn_end();
     }
     return retval;
 }

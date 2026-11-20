@@ -340,10 +340,11 @@ struct backcommon
 #define ENTRY_STATE_LRU        0x20 /* cache entry is queued in the lru */
     int32_t ep_refcnt;              /* entry reference cnt */
     size_t ep_size;                 /* for cache tracking */
-    struct timespec ep_create_time; /* the time the entry was added to the cache */
+    uint64_t ep_owner;              /* transaction tag of the parent update operation
+                                     * that added/replaced it in the cache (0: none) */
 };
 
-/* From ep_type through ep_create_time MUST be identical to backcommon */
+/* From ep_type through ep_owner MUST be identical to backcommon */
 struct backentry
 {
     int32_t ep_type;                /* to distinguish backdn from backentry */
@@ -353,7 +354,7 @@ struct backentry
     uint8_t ep_state;               /* state in the cache */
     int32_t ep_refcnt;              /* entry reference cnt */
     size_t ep_size;                 /* for cache tracking */
-    struct timespec ep_create_time; /* the time the entry was added to the cache */
+    uint64_t ep_owner;              /* transaction tag (see backcommon) */
     Slapi_Entry *ep_entry;          /* real entry */
     Slapi_Entry *ep_vlventry;
     void *ep_dn_link;               /* linkage for the 3 hash */
@@ -368,7 +369,7 @@ struct backentry
                                      * changed in-place */
 };
 
-/* From ep_type through ep_create_time MUST be identical to backcommon */
+/* From ep_type through ep_owner MUST be identical to backcommon */
 struct backdn
 {
     int32_t ep_type;                /* to distinguish backdn from backentry */
@@ -378,7 +379,7 @@ struct backdn
     uint8_t ep_state;               /* state in the cache; share ENTRY_STATE_* */
     int32_t ep_refcnt;              /* entry reference cnt */
     uint64_t ep_size;               /* for cache tracking */
-    struct timespec ep_create_time; /* the time the entry was added to the cache */
+    uint64_t ep_owner;              /* transaction tag (see backcommon) */
     Slapi_DN *dn_sdn;
     void *dn_id_link;               /* for hash table */
 };
@@ -399,6 +400,26 @@ struct cache_stats
                                * in the cache
                                */
 };
+
+/* List of the cache that have been modified within the txn */
+typedef struct cache_txn_changed
+{
+    struct cache_txn_changed *next;
+    struct cache_txn_saved *saved;      /* Pinned entries replaced in this transaction */
+    struct cache *cache;                /* Modified cache */
+    int32_t type;                       /* CACHE_TYPE_ENTRY or CACHE_TYPE_DN */
+} cache_txn_changed;
+
+/*
+ * Cache txn context of a parent (top level) update operation.
+ * Used to roll back the entry and dn caches when a betxn plugin fails.
+ * (see cache_txn_begin/cache_txn_abort/cache_txn_end in cache.c)
+ */
+typedef struct cache_txn_ctx
+{
+    uint64_t tag;                       /* Transaction tag (0: context not started) */
+    cache_txn_changed *changed;         /* Data about changed caches */
+} cache_txn_ctx;
 
 /* for the in-core cache of entries */
 struct cache

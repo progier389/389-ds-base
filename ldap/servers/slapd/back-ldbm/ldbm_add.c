@@ -98,9 +98,9 @@ ldbm_back_add(Slapi_PBlock *pb)
     PRUint64 conn_id;
     int op_id;
     int result_sent = 0;
-    int32_t parent_op = 0;
+    bool parent_op = false;
     int32_t betxn_callback_fails = 0; /* if a BETXN fails we need to revert entry cache */
-    struct timespec parent_time;
+    cache_txn_ctx cache_txn = {0}; /* storage for the parent operation cache txn context */
 
     if (slapi_pblock_get(pb, SLAPI_CONN_ID, &conn_id) < 0) {
         conn_id = 0; /* connection is NULL */
@@ -154,9 +154,9 @@ ldbm_back_add(Slapi_PBlock *pb)
     dblayer_txn_init(li, &txn);
 
     if (txn.back_txn_txn == NULL) {
-        /* This is the parent operation, get the time */
-        parent_op = 1;
-        parent_time = slapi_current_rel_time_hr();
+        /* This is the parent operation, start the cache transaction context */
+        parent_op = true;
+        cache_txn_begin(&cache_txn);
     }
 
     /* the calls to perform searches require the parent txn if any
@@ -1389,9 +1389,9 @@ diskfull_return:
             rc = SLAPI_FAIL_GENERAL;
         }
 
-        /* Revert the caches if this is the parent operation */
+        /* In failure case, revert the caches if this is the parent operation */
         if (parent_op && betxn_callback_fails) {
-            revert_cache(inst, &parent_time);
+            cache_txn_abort(inst);
         }
     }
 
@@ -1471,6 +1471,9 @@ common_return:
     slapi_sdn_done(&parentsdn);
     slapi_ch_free((void **)&ldap_result_matcheddn);
     slapi_ch_free((void **)&errbuf);
+    if (parent_op) {
+        cache_txn_end();
+    }
     return rc;
 }
 

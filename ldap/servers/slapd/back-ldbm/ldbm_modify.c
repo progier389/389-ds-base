@@ -586,9 +586,9 @@ ldbm_back_modify(Slapi_PBlock *pb)
     int fixup_tombstone = 0;
     int ec_locked = 0;
     int result_sent = 0;
-    int32_t parent_op = 0;
+    bool parent_op = false;
     int32_t betxn_callback_fails = 0; /* if a BETXN fails we need to revert entry cache */
-    struct timespec parent_time;
+    cache_txn_ctx cache_txn = {0}; /* storage for the parent operation cache txn context */
     Slapi_Mods *smods_add_rdn = NULL;
 
     slapi_pblock_get(pb, SLAPI_BACKEND, &be);
@@ -607,9 +607,9 @@ ldbm_back_modify(Slapi_PBlock *pb)
        so set txn to the parent_txn until we begin the child transaction */
 
     if (txn.back_txn_txn == NULL) {
-        /* This is the parent operation, get the time */
-        parent_op = 1;
-        parent_time = slapi_current_rel_time_hr();
+        /* This is the parent operation, start the cache transaction context */
+        parent_op = true;
+        cache_txn_begin(&cache_txn);
     }
 
     if (parent_txn) {
@@ -1171,9 +1171,9 @@ error_return:
         if (!not_an_error) {
             rc = SLAPI_FAIL_GENERAL;
         }
-        /* Revert the caches if this is the parent operation */
+        /* In failure case, revert the caches if this is the parent operation */
         if (parent_op && betxn_callback_fails) {
-            revert_cache(inst, &parent_time);
+            cache_txn_abort(inst);
         }
     }
 
@@ -1244,6 +1244,9 @@ common_return:
     backentry_free(&tmpentry);
     slapi_ch_free_string(&errbuf);
 
+    if (parent_op) {
+        cache_txn_end();
+    }
     return rc;
 }
 
